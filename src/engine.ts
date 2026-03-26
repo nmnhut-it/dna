@@ -1,4 +1,4 @@
-import { execFileSync } from "child_process";
+import { spawn } from "child_process";
 import { readMemory, appendMemory, removeMemoryEntry } from "./memory.js";
 import { loadHistory, getTodayFileName } from "./history.js";
 import { loadReminders, addReminder } from "./reminders.js";
@@ -21,10 +21,6 @@ interface ContextPaths {
   chat?: ChatContext;
 }
 
-/**
- * Builds the system prompt string from memory, history, and pending reminders.
- * Input: ContextPaths pointing to data dirs. Output: formatted string for Claude.
- */
 export function assembleContext(paths: ContextPaths): string {
   const today = getTodayFileName();
   const history = loadHistory(paths.historyDir, today, paths.historyLimit);
@@ -42,10 +38,6 @@ export function assembleContext(paths: ContextPaths): string {
   return buildSystemPrompt({ memory, reminders, historySnippet, isGroup: false, chat: paths.chat });
 }
 
-/**
- * Runs each parsed action against memory and reminders storage.
- * Input: actions array, memoryDir path, remindersPath. Output: void (side effects only).
- */
 export function executeActions(
   actions: ParsedAction[],
   memoryDir: string,
@@ -71,16 +63,48 @@ export function executeActions(
 }
 
 /**
- * Calls the claude CLI with -p flag, passing combined system prompt and user message.
- * Input: userMessage string, systemPrompt string. Output: trimmed response string.
+ * Streams response from claude -p, calling onChunk with accumulated text.
+ * Returns the full response when done.
  */
-export function sendToClaude(userMessage: string, systemPrompt: string): string {
-  const input = `${systemPrompt}\n\n---\n\nUser: ${userMessage}`;
-  const result = execFileSync("claude", ["-p", input], {
-    encoding: "utf-8",
-    timeout: 120_000,
+export function streamFromClaude(
+  userMessage: string,
+  systemPrompt: string,
+  onChunk: (accumulated: string) => void
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const input = `${systemPrompt}\n\n---\n\nUser: ${userMessage}`;
+    const proc = spawn("claude", ["-p", input], {
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 120_000,
+    });
+
+    let output = "";
+    let lastEmit = 0;
+    const THROTTLE_MS = 1500;
+
+    proc.stdout.on("data", (data: Buffer) => {
+      output += data.toString();
+      const now = Date.now();
+      if (now - lastEmit > THROTTLE_MS) {
+        lastEmit = now;
+        onChunk(stripActions(output).trim());
+      }
+    });
+
+    proc.stderr.on("data", (data: Buffer) => {
+      console.error("claude stderr:", data.toString());
+    });
+
+    proc.on("close", (code) => {
+      if (code === 0) {
+        resolve(output.trim());
+      } else {
+        reject(new Error(`claude exited with code ${code}`));
+      }
+    });
+
+    proc.on("error", reject);
   });
-  return result.trim();
 }
 
 export interface ProcessResult {
@@ -89,15 +113,16 @@ export interface ProcessResult {
 }
 
 /**
- * Full pipeline: assemble context, call Claude, parse+execute actions, return clean reply.
- * Input: userMessage and combined ContextPaths. Output: ProcessResult with reply and actions.
+ * Async streaming pipeline: assembles context, streams from Claude,
+ * calls onChunk for progressive updates, then executes actions.
  */
-export function processMessage(
+export async function processMessageStream(
   userMessage: string,
-  paths: ContextPaths & { memoryDir: string; remindersPath: string }
-): ProcessResult {
+  paths: ContextPaths & { memoryDir: string; remindersPath: string },
+  onChunk: (text: string) => void
+): Promise<ProcessResult> {
   const systemPrompt = assembleContext(paths);
-  const rawResponse = sendToClaude(userMessage, systemPrompt);
+  const rawResponse = await streamFromClaude(userMessage, systemPrompt, onChunk);
   const actions = parseActions(rawResponse);
   if (!paths.isGroup) {
     executeActions(actions, paths.memoryDir, paths.remindersPath);

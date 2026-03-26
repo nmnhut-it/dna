@@ -1,5 +1,5 @@
 import { Bot, Context } from "grammy";
-import { processMessage, type ChatContext } from "./engine.js";
+import { processMessageStream, type ChatContext } from "./engine.js";
 import { appendHistory, getTodayFileName } from "./history.js";
 import { downloadTelegramFile } from "./files.js";
 import { join } from "path";
@@ -131,10 +131,42 @@ export function createBot(deps: BotDeps): Bot {
     };
 
     try {
-      const result = processMessage(userMessage, paths);
+      await ctx.replyWithChatAction("typing");
+      const typingInterval = setInterval(() => {
+        ctx.replyWithChatAction("typing").catch(() => {});
+      }, 4000);
+
+      let sentMsg: { message_id: number } | undefined;
+      let lastEditText = "";
+
+      const result = await processMessageStream(userMessage, paths, async (chunk) => {
+        if (!chunk || chunk === lastEditText) return;
+        try {
+          if (!sentMsg) {
+            sentMsg = await ctx.reply(chunk + " ...");
+            lastEditText = chunk + " ...";
+          } else {
+            const editText = chunk + " ...";
+            if (editText !== lastEditText) {
+              await ctx.api.editMessageText(chatId, sentMsg.message_id, editText);
+              lastEditText = editText;
+            }
+          }
+        } catch { /* edit may fail if text unchanged or too fast */ }
+      });
+
+      clearInterval(typingInterval);
+
+      if (sentMsg) {
+        if (result.reply !== lastEditText) {
+          await ctx.api.editMessageText(chatId, sentMsg.message_id, result.reply);
+        }
+      } else {
+        await ctx.reply(result.reply);
+      }
+
       appendHistory(histDir, today, { role: "assistant", content: result.reply, timestamp: new Date().toISOString() });
       eventBus.emit("chat", { type: "message", chatId, role: "assistant", content: result.reply, timestamp: new Date().toISOString() });
-      await ctx.reply(result.reply);
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : "Unknown error";
       console.error("Engine error:", errMsg);
