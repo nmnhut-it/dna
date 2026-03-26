@@ -159,10 +159,10 @@ export function createBot(deps: BotDeps): Bot {
 
       if (sentMsg) {
         if (result.reply !== lastEditText) {
-          await ctx.api.editMessageText(chatId, sentMsg.message_id, result.reply);
+          await ctx.api.editMessageText(chatId, sentMsg.message_id, result.reply, { parse_mode: "HTML" });
         }
       } else {
-        await ctx.reply(result.reply);
+        await ctx.reply(result.reply, { parse_mode: "HTML" });
       }
 
       const reactAction = result.actions.find((a) => a.type === "REACT");
