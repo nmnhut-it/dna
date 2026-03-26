@@ -78,8 +78,12 @@ export function streamFromClaude(
       "--allowedTools", "WebSearch", "WebFetch", "Read",
     ], {
       stdio: ["pipe", "pipe", "pipe"],
-      timeout: 120_000,
     });
+
+    const killTimer = setTimeout(() => {
+      console.warn("claude process timed out after 5min, killing");
+      proc.kill();
+    }, 300_000);
 
     proc.stdin.write(input);
     proc.stdin.end();
@@ -101,11 +105,16 @@ export function streamFromClaude(
       console.error("claude stderr:", data.toString());
     });
 
-    proc.on("close", (code) => {
+    proc.on("close", (code, signal) => {
+      clearTimeout(killTimer);
       if (code === 0) {
         resolve(output.trim());
+      } else if (output.trim()) {
+        // Got partial output before crash — use what we have
+        console.warn(`claude exited with code=${code} signal=${signal}, using partial output`);
+        resolve(output.trim());
       } else {
-        reject(new Error(`claude exited with code ${code}`));
+        reject(new Error(`claude exited with code=${code} signal=${signal}`));
       }
     });
 

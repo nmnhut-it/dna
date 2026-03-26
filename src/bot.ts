@@ -136,33 +136,24 @@ export function createBot(deps: BotDeps): Bot {
         ctx.replyWithChatAction("typing").catch(() => {});
       }, 4000);
 
-      let sentMsg: { message_id: number } | undefined;
-      let lastEditText = "";
+      let sentMsg: { message_id: number } = await ctx.reply("đang nghĩ... ⏳");
+      let lastEditText = "đang nghĩ... ⏳";
 
       const result = await processMessageStream(userMessage, paths, async (chunk) => {
         if (!chunk || chunk === lastEditText) return;
         try {
-          if (!sentMsg) {
-            sentMsg = await ctx.reply(chunk + " ...");
-            lastEditText = chunk + " ...";
-          } else {
-            const editText = chunk + " ...";
-            if (editText !== lastEditText) {
-              await ctx.api.editMessageText(chatId, sentMsg.message_id, editText);
-              lastEditText = editText;
-            }
+          const editText = chunk + " ...";
+          if (editText !== lastEditText) {
+            await ctx.api.editMessageText(chatId, sentMsg.message_id, editText);
+            lastEditText = editText;
           }
         } catch { /* edit may fail if text unchanged or too fast */ }
       });
 
       clearInterval(typingInterval);
 
-      if (sentMsg) {
-        if (result.reply !== lastEditText) {
-          await ctx.api.editMessageText(chatId, sentMsg.message_id, result.reply, { parse_mode: "HTML" });
-        }
-      } else {
-        await ctx.reply(result.reply, { parse_mode: "HTML" });
+      if (result.reply !== lastEditText) {
+        await ctx.api.editMessageText(chatId, sentMsg.message_id, result.reply, { parse_mode: "HTML" });
       }
 
       const reactAction = result.actions.find((a) => a.type === "REACT");
