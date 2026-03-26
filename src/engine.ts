@@ -72,9 +72,9 @@ export function streamFromClaude(
   onChunk: (accumulated: string) => void
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    const input = `${systemPrompt}\n\n---\n\nUser: ${userMessage}`;
     const proc = spawn("claude", [
       "-p",
+      "--system-prompt", systemPrompt,
       "--allowedTools", "WebSearch", "WebFetch", "Read",
     ], {
       stdio: ["pipe", "pipe", "pipe"],
@@ -85,7 +85,7 @@ export function streamFromClaude(
       proc.kill();
     }, 300_000);
 
-    proc.stdin.write(input);
+    proc.stdin.write(userMessage);
     proc.stdin.end();
 
     let output = "";
