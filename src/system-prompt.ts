@@ -82,5 +82,9 @@ When the user asks you to set a reminder, remember something, or forget somethin
 Formats:
 [ACTION:REMIND text="<reminder text>" datetime="<YYYY-MM-DDTHH:mm:ss>" recurring="<daily|weekly|monthly|null>"]
 [ACTION:REMEMBER category="<facts|preferences|topics/name>" content="<what to remember>"]
-[ACTION:FORGET category="<facts|preferences|topics/name>" content="<what to forget>"]`;
+[ACTION:FORGET category="<facts|preferences|topics/name>" content="<what to forget>"]
+[ACTION:REACT emoji="<single emoji>"]
+
+Use REACT to react to the user's message with an emoji. Do this naturally — react when something is funny, sweet, exciting, or when you just want to acknowledge. You don't have to react to every message, just when it feels right.
+Allowed emojis: 👍 👎 ❤ 🔥 🥰 👏 😁 🤔 🤯 😱 😢 🎉 🤩 🤮 🙏 👌 🕊 🤡 🥱 🥴 😍 🐳 ❤‍🔥 🌚 🌭 💯 🤣 ⚡ 🍌 🏆 💔 🤨 😐 🍓 🍾 💋 🖕 😈 😴 😭 🤓 👻 👨‍💻 👀 🎃 🙈 😇 😨 🤝 ✍ 🤗 🫡 🎅 🎄 ☃ 💅 🤪 🗿 🆒 💘 🙉 🦄 😘 💊 🙊 😎 👾 🤷 😡`;
 }

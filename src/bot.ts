@@ -165,6 +165,16 @@ export function createBot(deps: BotDeps): Bot {
         await ctx.reply(result.reply);
       }
 
+      const reactAction = result.actions.find((a) => a.type === "REACT");
+      if (reactAction?.params.emoji) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await ctx.api.setMessageReaction(chatId, msg.message_id, [
+            { type: "emoji", emoji: reactAction.params.emoji } as any,
+          ]);
+        } catch { /* reaction may fail if emoji not supported by Telegram */ }
+      }
+
       appendHistory(histDir, today, { role: "assistant", content: result.reply, timestamp: new Date().toISOString() });
       eventBus.emit("chat", { type: "message", chatId, role: "assistant", content: result.reply, timestamp: new Date().toISOString() });
     } catch (error) {
