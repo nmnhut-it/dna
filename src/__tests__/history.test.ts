@@ -3,7 +3,7 @@ import { loadHistory, appendHistory, getTodayFileName } from "../history.js";
 import { mkdirSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 
-const TEST_DIR = join(import.meta.dirname, "test-data", "history");
+const TEST_DIR = join(import.meta.dirname, "td-history", "history");
 
 describe("history", () => {
   beforeEach(() => {
@@ -11,7 +11,7 @@ describe("history", () => {
   });
 
   afterEach(() => {
-    rmSync(join(import.meta.dirname, "test-data"), { recursive: true, force: true });
+    rmSync(join(import.meta.dirname, "td-history"), { recursive: true, force: true });
   });
 
   it("returns empty array when no history file exists", () => {

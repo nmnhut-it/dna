@@ -3,7 +3,7 @@ import { loadReminders, addReminder, markNotified, getDueReminders, scheduleNext
 import { mkdirSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 
-const TEST_DIR = join(import.meta.dirname, "test-data", "reminders");
+const TEST_DIR = join(import.meta.dirname, "td-reminders", "reminders");
 const ACTIVE_PATH = join(TEST_DIR, "active.json");
 
 describe("reminders", () => {
@@ -13,7 +13,7 @@ describe("reminders", () => {
   });
 
   afterEach(() => {
-    rmSync(join(import.meta.dirname, "test-data"), { recursive: true, force: true });
+    rmSync(join(import.meta.dirname, "td-reminders"), { recursive: true, force: true });
   });
 
   it("loads empty reminders", () => {

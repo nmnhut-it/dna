@@ -3,7 +3,7 @@ import { readMemory, appendMemory, removeMemoryEntry, listMemoryFiles } from "..
 import { mkdirSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 
-const TEST_DIR = join(import.meta.dirname, "test-data", "memory");
+const TEST_DIR = join(import.meta.dirname, "td-memory", "memory");
 
 describe("memory", () => {
   beforeEach(() => {
@@ -13,7 +13,7 @@ describe("memory", () => {
   });
 
   afterEach(() => {
-    rmSync(join(import.meta.dirname, "test-data"), { recursive: true, force: true });
+    rmSync(join(import.meta.dirname, "td-memory"), { recursive: true, force: true });
   });
 
   it("reads all memory files into a single string", () => {

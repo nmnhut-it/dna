@@ -3,7 +3,7 @@ import { assembleContext, executeActions } from "../engine.js";
 import { mkdirSync, rmSync, writeFileSync, readFileSync } from "fs";
 import { join } from "path";
 
-const TEST_DATA = join(import.meta.dirname, "test-data");
+const TEST_DATA = join(import.meta.dirname, "td-engine");
 const MEMORY_DIR = join(TEST_DATA, "memory");
 const HISTORY_DIR = join(TEST_DATA, "history");
 const REMINDERS_PATH = join(TEST_DATA, "reminders", "active.json");
