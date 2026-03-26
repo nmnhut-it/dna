@@ -73,7 +73,10 @@ export function streamFromClaude(
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const input = `${systemPrompt}\n\n---\n\nUser: ${userMessage}`;
-    const proc = spawn("claude", ["-p", input], {
+    const proc = spawn("claude", [
+      "-p", input,
+      "--allowedTools", "WebSearch", "WebFetch", "Read",
+    ], {
       stdio: ["pipe", "pipe", "pipe"],
       timeout: 120_000,
     });
