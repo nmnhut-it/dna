@@ -11,6 +11,7 @@ interface Config {
   pairSecret: string;
   historyLimit: number;
   mcpServerUrl: string;
+  webPort: number;
 }
 
 export function loadConfig(): Config {

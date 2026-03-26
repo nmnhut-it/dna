@@ -1,6 +1,7 @@
 import { loadConfig, saveConfig, DATA_DIR } from "./config.js";
 import { createBot } from "./bot.js";
 import { startScheduler } from "./scheduler.js";
+import { createWebServer } from "./web/server.js";
 import { join } from "path";
 import { mkdirSync } from "fs";
 
@@ -21,6 +22,8 @@ const bot = createBot({
     saveConfig(config);
   },
 });
+
+createWebServer(config.webPort);
 
 startScheduler({
   remindersPath: join(DATA_DIR, "reminders", "active.json"),
