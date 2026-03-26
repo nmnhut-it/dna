@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DNA Dashboard</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>DNA</h1>
+    <nav>
+      <button class="tab active" data-tab="live">Live</button>
+      <button class="tab" data-tab="chats">Chats</button>
+      <button class="tab" data-tab="memory">Memory</button>
+      <button class="tab" data-tab="reminders">Reminders</button>
+      <button class="tab" data-tab="settings">Settings</button>
+    </nav>
+    <span id="status" class="status offline">offline</span>
+  </header>
+  <main>
+    <section id="tab-live" class="panel">
+      <h2>Live Feed</h2>
+      <div id="live-feed" class="feed"></div>
+    </section>
+    <section id="tab-chats" class="panel hidden">
+      <h2>Chat History</h2>
+      <div id="chat-list" class="sidebar"></div>
+      <div id="chat-view" class="chat-view">
+        <p class="placeholder">Select a chat to view history</p>
+      </div>
+    </section>
+    <section id="tab-memory" class="panel hidden">
+      <h2>Memory</h2>
+      <div id="memory-list" class="sidebar"></div>
+      <div id="memory-editor" class="editor">
+        <p class="placeholder">Select a memory category</p>
+      </div>
+    </section>
+    <section id="tab-reminders" class="panel hidden">
+      <h2>Reminders</h2>
+      <form id="reminder-form">
+        <input type="text" name="text" placeholder="Reminder text" required>
+        <input type="datetime-local" name="datetime" required>
+        <select name="recurring">
+          <option value="">One-time</option>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+        <button type="submit">Add</button>
+      </form>
+      <div id="reminder-list"></div>
+    </section>
+    <section id="tab-settings" class="panel hidden">
+      <h2>Settings</h2>
+      <div id="settings-form">
+        <h3>Paired Chats</h3>
+        <div id="paired-list"></div>
+        <form id="pair-form">
+          <input type="number" name="id" placeholder="Chat ID">
+          <button type="submit">Add</button>
+        </form>
+        <h3>Config</h3>
+        <label>Pair Secret <input type="text" id="cfg-pairSecret"></label>
+        <label>History Limit <input type="number" id="cfg-historyLimit"></label>
+        <button id="save-config">Save</button>
+      </div>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
