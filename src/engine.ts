@@ -74,12 +74,15 @@ export function streamFromClaude(
   return new Promise((resolve, reject) => {
     const input = `${systemPrompt}\n\n---\n\nUser: ${userMessage}`;
     const proc = spawn("claude", [
-      "-p", input,
+      "-p",
       "--allowedTools", "WebSearch", "WebFetch", "Read",
     ], {
       stdio: ["pipe", "pipe", "pipe"],
       timeout: 120_000,
     });
+
+    proc.stdin.write(input);
+    proc.stdin.end();
 
     let output = "";
     let lastEmit = 0;
