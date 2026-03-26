@@ -122,13 +122,31 @@ export interface ProcessResult {
  * Async streaming pipeline: assembles context, streams from Claude,
  * calls onChunk for progressive updates, then executes actions.
  */
+const MAX_RETRIES = 3;
+
 export async function processMessageStream(
   userMessage: string,
   paths: ContextPaths & { memoryDir: string; remindersPath: string },
   onChunk: (text: string) => void
 ): Promise<ProcessResult> {
   const systemPrompt = assembleContext(paths);
-  const rawResponse = await streamFromClaude(userMessage, systemPrompt, onChunk);
+
+  let rawResponse = "";
+  let lastError: Error | undefined;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      rawResponse = await streamFromClaude(userMessage, systemPrompt, onChunk);
+      lastError = undefined;
+      break;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      console.error(`Claude attempt ${attempt}/${MAX_RETRIES} failed:`, lastError.message);
+      if (attempt < MAX_RETRIES) {
+        await new Promise((r) => setTimeout(r, 1000 * attempt));
+      }
+    }
+  }
+  if (lastError) throw lastError;
   const actions = parseActions(rawResponse);
   if (!paths.isGroup) {
     executeActions(actions, paths.memoryDir, paths.remindersPath);
