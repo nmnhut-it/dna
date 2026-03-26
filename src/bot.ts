@@ -5,6 +5,7 @@ import { downloadTelegramFile } from "./files.js";
 import { join } from "path";
 import { mkdirSync } from "fs";
 import { DATA_DIR } from "./config.js";
+import { eventBus } from "./web/event-bus.js";
 
 const MEMORY_DIR = join(DATA_DIR, "memory");
 const HISTORY_DIR = join(DATA_DIR, "history");
@@ -125,6 +126,7 @@ export function createBot(deps: BotDeps): Bot {
       : parts.join("\n");
 
     appendHistory(histDir, today, { role: "user", content: userMessage, timestamp });
+    eventBus.emit("chat", { type: "message", chatId, role: "user", content: userMessage, timestamp });
 
     const paths = {
       memoryDir: MEMORY_DIR,
@@ -137,6 +139,7 @@ export function createBot(deps: BotDeps): Bot {
     try {
       const result = processMessage(userMessage, paths);
       appendHistory(histDir, today, { role: "assistant", content: result.reply, timestamp: new Date().toISOString() });
+      eventBus.emit("chat", { type: "message", chatId, role: "assistant", content: result.reply, timestamp: new Date().toISOString() });
       await ctx.reply(result.reply);
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : "Unknown error";
