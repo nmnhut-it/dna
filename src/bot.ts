@@ -30,8 +30,15 @@ function chatHistoryDir(chatId: number): string {
 
 export function createBot(deps: BotDeps): Bot {
   const bot = new Bot(deps.token);
+  let botId: number | undefined;
+  let botUsername: string | undefined;
 
   bot.use(async (ctx, next) => {
+    if (!botId) {
+      const me = await bot.api.getMe();
+      botId = me.id;
+      botUsername = me.username?.toLowerCase();
+    }
     const chatId = ctx.chat?.id;
     if (!chatId) return;
     if (deps.allowedIds.includes(chatId)) {
@@ -43,6 +50,14 @@ export function createBot(deps: BotDeps): Bot {
     const msg = ctx.message!;
     const chatId = ctx.chat!.id;
     const isGroup = isGroupChat(chatId);
+
+    if (isGroup) {
+      const text = (msg.text ?? msg.caption ?? "").toLowerCase();
+      const isMentioned = botUsername ? text.includes(`@${botUsername}`) : false;
+      const isReply = msg.reply_to_message?.from?.id === botId;
+      if (!isMentioned && !isReply) return;
+    }
+
     const histDir = chatHistoryDir(chatId);
     const today = getTodayFileName();
     const timestamp = new Date().toISOString();

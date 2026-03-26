@@ -16,7 +16,7 @@ export function memoryRouter(): Router {
   });
 
   router.get("/*category", (req, res) => {
-    const category = req.params.category;
+    const category = String(req.params.category);
     const filePath = join(MEMORY_DIR, `${category}.md`);
     try {
       const content = readFileSync(filePath, "utf-8");
@@ -27,7 +27,7 @@ export function memoryRouter(): Router {
   });
 
   router.post("/*category", (req, res) => {
-    const category = req.params.category;
+    const category = String(req.params.category);
     const { content } = req.body;
     if (typeof content !== "string") {
       res.status(400).json({ error: "content is required" });
@@ -38,7 +38,7 @@ export function memoryRouter(): Router {
   });
 
   router.delete("/*category", (req, res) => {
-    const category = req.params.category;
+    const category = String(req.params.category);
     const { content } = req.body;
     if (typeof content !== "string") {
       res.status(400).json({ error: "content is required" });
