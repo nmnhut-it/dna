@@ -1,11 +1,12 @@
 import type { Reminder } from "./reminders.js";
+import type { ChatContext } from "./engine.js";
 
-// Context passed to buildSystemPrompt; all fields are optional/empty by default
 interface PromptContext {
   memory: string;
   reminders: Reminder[];
   historySnippet: string;
   isGroup?: boolean;
+  chat?: ChatContext;
 }
 
 /**
@@ -18,6 +19,13 @@ export function buildSystemPrompt(ctx: PromptContext): string {
   const sections: string[] = [];
 
   sections.push(buildIdentitySection(now));
+
+  if (ctx.chat) {
+    const chatType = ctx.chat.isGroup ? "group chat" : "private chat";
+    const chatLabel = ctx.chat.chatTitle ?? String(ctx.chat.chatId);
+    const sender = ctx.chat.senderName ? `Sender: ${ctx.chat.senderName}` : "";
+    sections.push(`## Current conversation\nYou are in a ${chatType}: "${chatLabel}" (ID: ${ctx.chat.chatId}).\n${sender}`.trim());
+  }
 
   if (ctx.memory) {
     sections.push(`## What you know about the user\n\n${ctx.memory}`);

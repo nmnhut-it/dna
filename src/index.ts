@@ -14,13 +14,7 @@ mkdirSync(join(DATA_DIR, "reminders"), { recursive: true });
 const bot = createBot({
   token: config.telegramBotToken,
   allowedIds: config.allowedIds,
-  ownerId: config.ownerId,
-  pairSecret: config.pairSecret,
   historyLimit: config.historyLimit,
-  onPair: () => {
-    console.log("Allowlist changed, saving config...");
-    saveConfig(config);
-  },
 });
 
 createWebServer(config.webPort);

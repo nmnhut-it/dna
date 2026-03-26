@@ -5,13 +5,20 @@ import { loadReminders, addReminder } from "./reminders.js";
 import { buildSystemPrompt } from "./system-prompt.js";
 import { parseActions, stripActions, type ParsedAction } from "./actions.js";
 
-// Paths needed to assemble context and execute actions
+export interface ChatContext {
+  chatId: number;
+  chatTitle?: string;
+  senderName?: string;
+  isGroup: boolean;
+}
+
 interface ContextPaths {
   memoryDir: string;
   historyDir: string;
   remindersPath: string;
   historyLimit: number;
   isGroup?: boolean;
+  chat?: ChatContext;
 }
 
 /**
@@ -27,12 +34,12 @@ export function assembleContext(paths: ContextPaths): string {
     .join("\n");
 
   if (paths.isGroup) {
-    return buildSystemPrompt({ memory: "", reminders: [], historySnippet, isGroup: true });
+    return buildSystemPrompt({ memory: "", reminders: [], historySnippet, isGroup: true, chat: paths.chat });
   }
 
   const memory = readMemory(paths.memoryDir);
   const reminders = loadReminders(paths.remindersPath).filter((r) => !r.notified);
-  return buildSystemPrompt({ memory, reminders, historySnippet, isGroup: false });
+  return buildSystemPrompt({ memory, reminders, historySnippet, isGroup: false, chat: paths.chat });
 }
 
 /**

@@ -1,5 +1,5 @@
 import { Bot, Context } from "grammy";
-import { processMessage } from "./engine.js";
+import { processMessage, type ChatContext } from "./engine.js";
 import { appendHistory, getTodayFileName } from "./history.js";
 import { downloadTelegramFile } from "./files.js";
 import { join } from "path";
@@ -15,10 +15,7 @@ const TMP_DIR = join(DATA_DIR, "tmp");
 interface BotDeps {
   token: string;
   allowedIds: number[];
-  ownerId: number;
-  pairSecret: string;
   historyLimit: number;
-  onPair: (id: number) => void;
 }
 
 function isGroupChat(chatId: number): boolean {
@@ -33,34 +30,6 @@ function chatHistoryDir(chatId: number): string {
 
 export function createBot(deps: BotDeps): Bot {
   const bot = new Bot(deps.token);
-
-  bot.command("pair", async (ctx) => {
-    const chatId = ctx.chat.id;
-    if (deps.allowedIds.includes(chatId)) {
-      await ctx.reply("Already paired.");
-      return;
-    }
-    const secret = ctx.match?.trim();
-    if (secret !== deps.pairSecret) {
-      await ctx.reply("Invalid pairing secret. Usage: /pair <secret>");
-      return;
-    }
-    deps.allowedIds.push(chatId);
-    deps.onPair(chatId);
-    await ctx.reply(`Paired! Chat ${chatId} is now whitelisted.`);
-  });
-
-  bot.command("unpair", async (ctx) => {
-    if (ctx.from?.id !== deps.ownerId) return;
-    const idStr = ctx.match?.trim();
-    if (!idStr) { await ctx.reply("Usage: /unpair <chat_id>"); return; }
-    const id = Number(idStr);
-    const idx = deps.allowedIds.indexOf(id);
-    if (idx === -1) { await ctx.reply("Not paired."); return; }
-    deps.allowedIds.splice(idx, 1);
-    deps.onPair(id);
-    await ctx.reply(`Unpaired chat ${id}.`);
-  });
 
   bot.use(async (ctx, next) => {
     const chatId = ctx.chat?.id;
@@ -128,12 +97,22 @@ export function createBot(deps: BotDeps): Bot {
     appendHistory(histDir, today, { role: "user", content: userMessage, timestamp });
     eventBus.emit("chat", { type: "message", chatId, role: "user", content: userMessage, timestamp });
 
+    const chat: ChatContext = {
+      chatId,
+      chatTitle: ctx.chat!.type === "private"
+        ? msg.from?.first_name ?? "Private"
+        : (ctx.chat! as { title?: string }).title ?? String(chatId),
+      senderName: msg.from?.first_name,
+      isGroup,
+    };
+
     const paths = {
       memoryDir: MEMORY_DIR,
       historyDir: histDir,
       remindersPath: REMINDERS_PATH,
       historyLimit: deps.historyLimit,
       isGroup,
+      chat,
     };
 
     try {
