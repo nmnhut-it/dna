@@ -1,3 +1,22 @@
+// --- Notifications ---
+let notificationsEnabled = localStorage.getItem("dna-notifications") !== "off";
+
+function requestNotificationPermission() {
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+}
+
+function showNotification(role, content, chatId) {
+  if (!notificationsEnabled) return;
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const title = role === "user" ? `Message [${chatId}]` : `DNA replied [${chatId}]`;
+  const body = content.length > 100 ? content.slice(0, 100) + "..." : content;
+  new Notification(title, { body, icon: "/icons/icon.png", tag: `dna-${chatId}-${Date.now()}` });
+}
+
+if (notificationsEnabled) requestNotificationPermission();
+
 // --- Tab Navigation ---
 const tabs = document.querySelectorAll(".tab");
 const panels = document.querySelectorAll(".panel");
@@ -36,6 +55,9 @@ function connectSSE() {
     if (data.type === "message") {
       appendMessage(feed, data.role, data.content, data.chatId, data.timestamp);
       feed.scrollTop = feed.scrollHeight;
+      if (data.role === "user") {
+        showNotification(data.role, data.content, data.chatId);
+      }
     }
   };
 }
@@ -165,6 +187,14 @@ async function loadSettings() {
 
   document.getElementById("cfg-pairSecret").value = config.pairSecret;
   document.getElementById("cfg-historyLimit").value = config.historyLimit;
+
+  const notifToggle = document.getElementById("cfg-notifications");
+  notifToggle.checked = notificationsEnabled;
+  notifToggle.addEventListener("change", () => {
+    notificationsEnabled = notifToggle.checked;
+    localStorage.setItem("dna-notifications", notifToggle.checked ? "on" : "off");
+    if (notifToggle.checked) requestNotificationPermission();
+  });
 
   const list = document.getElementById("paired-list");
   list.innerHTML = config.allowedIds.map((id) =>
