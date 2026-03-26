@@ -11,6 +11,7 @@ interface ContextPaths {
   historyDir: string;
   remindersPath: string;
   historyLimit: number;
+  isGroup?: boolean;
 }
 
 /**
@@ -18,16 +19,20 @@ interface ContextPaths {
  * Input: ContextPaths pointing to data dirs. Output: formatted string for Claude.
  */
 export function assembleContext(paths: ContextPaths): string {
-  const memory = readMemory(paths.memoryDir);
   const today = getTodayFileName();
   const history = loadHistory(paths.historyDir, today, paths.historyLimit);
-  const reminders = loadReminders(paths.remindersPath).filter((r) => !r.notified);
 
   const historySnippet = history
     .map((m) => `${m.role}: ${m.content}`)
     .join("\n");
 
-  return buildSystemPrompt({ memory, reminders, historySnippet });
+  if (paths.isGroup) {
+    return buildSystemPrompt({ memory: "", reminders: [], historySnippet, isGroup: true });
+  }
+
+  const memory = readMemory(paths.memoryDir);
+  const reminders = loadReminders(paths.remindersPath).filter((r) => !r.notified);
+  return buildSystemPrompt({ memory, reminders, historySnippet, isGroup: false });
 }
 
 /**
@@ -87,7 +92,9 @@ export function processMessage(
   const systemPrompt = assembleContext(paths);
   const rawResponse = sendToClaude(userMessage, systemPrompt);
   const actions = parseActions(rawResponse);
-  executeActions(actions, paths.memoryDir, paths.remindersPath);
+  if (!paths.isGroup) {
+    executeActions(actions, paths.memoryDir, paths.remindersPath);
+  }
   const reply = stripActions(rawResponse).trim();
   return { reply, actions };
 }

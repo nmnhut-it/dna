@@ -5,7 +5,7 @@ import type { Bot } from "grammy";
 interface SchedulerDeps {
   remindersPath: string;
   bot: Bot;
-  chatId: number;
+  chatIds: number[];
 }
 
 export function startScheduler(deps: SchedulerDeps): cron.ScheduledTask {
@@ -14,7 +14,9 @@ export function startScheduler(deps: SchedulerDeps): cron.ScheduledTask {
     for (const reminder of due) {
       try {
         const recurLabel = reminder.recurring ? ` (${reminder.recurring})` : "";
-        await deps.bot.api.sendMessage(deps.chatId, `Reminder: ${reminder.text}${recurLabel}`);
+        for (const chatId of deps.chatIds) {
+          await deps.bot.api.sendMessage(chatId, `Reminder: ${reminder.text}${recurLabel}`);
+        }
         markNotified(deps.remindersPath, reminder.id);
         if (reminder.recurring) {
           scheduleNextOccurrence(deps.remindersPath, reminder.id);

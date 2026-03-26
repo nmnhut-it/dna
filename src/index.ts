@@ -1,4 +1,4 @@
-import { loadConfig, DATA_DIR } from "./config.js";
+import { loadConfig, saveConfig, DATA_DIR } from "./config.js";
 import { createBot } from "./bot.js";
 import { startScheduler } from "./scheduler.js";
 import { join } from "path";
@@ -12,14 +12,20 @@ mkdirSync(join(DATA_DIR, "reminders"), { recursive: true });
 
 const bot = createBot({
   token: config.telegramBotToken,
-  allowedUserId: config.allowedUserId,
+  allowedIds: config.allowedIds,
+  ownerId: config.ownerId,
+  pairSecret: config.pairSecret,
   historyLimit: config.historyLimit,
+  onPair: () => {
+    console.log("Allowlist changed, saving config...");
+    saveConfig(config);
+  },
 });
 
 startScheduler({
   remindersPath: join(DATA_DIR, "reminders", "active.json"),
   bot,
-  chatId: config.allowedUserId,
+  chatIds: config.allowedIds,
 });
 
 bot.start({

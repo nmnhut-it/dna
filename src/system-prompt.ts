@@ -5,6 +5,7 @@ interface PromptContext {
   memory: string;
   reminders: Reminder[];
   historySnippet: string;
+  isGroup?: boolean;
 }
 
 /**
@@ -30,7 +31,15 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     sections.push(`## Recent conversation\n\n${ctx.historySnippet}`);
   }
 
-  sections.push(buildActionsSection());
+  if (ctx.isGroup) {
+    sections.push(`## Group chat rules
+
+You are in a group chat. Messages are prefixed with sender names.
+NEVER reveal personal information about any user — no personal memories, preferences, tasks, or reminders.
+Keep responses helpful but generic. Do NOT use action markers in group chats.`);
+  } else {
+    sections.push(buildActionsSection());
+  }
 
   return sections.join("\n\n");
 }
