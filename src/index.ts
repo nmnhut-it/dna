@@ -1,38 +1,54 @@
-import { loadConfig, saveConfig, DATA_DIR } from "./config.js";
+import { randomInt } from "crypto";
+import { execSync } from "child_process";
+import { initConfig } from "./config.js";
 import { createBot } from "./bot.js";
 import { startScheduler } from "./scheduler.js";
 import { createWebServer } from "./web/server.js";
-import { join } from "path";
-import { mkdirSync } from "fs";
+import { logger } from "./logger.js";
 
-const config = loadConfig();
+function copyToClipboard(text: string): boolean {
+  try {
+    const platform = process.platform;
+    if (platform === "win32") execSync("clip", { input: text });
+    else if (platform === "darwin") execSync("pbcopy", { input: text });
+    else execSync("xclip -selection clipboard", { input: text });
+    return true;
+  } catch { return false; }
+}
 
-mkdirSync(join(DATA_DIR, "memory", "topics"), { recursive: true });
-mkdirSync(join(DATA_DIR, "history"), { recursive: true });
-mkdirSync(join(DATA_DIR, "reminders"), { recursive: true });
+const config = await initConfig();
+
+const needsPairing = config.ownerId === 0;
+const pairingCode = needsPairing
+  ? String(randomInt(100000, 999999))
+  : undefined;
 
 const bot = createBot({
   token: config.telegramBotToken,
-  allowedIds: config.allowedIds,
+  config,
   historyLimit: config.historyLimit,
+  pairingCode,
 });
 
 createWebServer(config.webPort);
 
-startScheduler({
-  remindersPath: join(DATA_DIR, "reminders", "active.json"),
-  bot,
-  chatIds: config.allowedIds,
-});
+startScheduler({ bot });
+
+if (needsPairing) {
+  const command = `/start ${pairingCode}`;
+  const copied = copyToClipboard(command);
+  logger.info(`Pairing code: ${pairingCode}`, undefined, "system");
+  logger.info(`Open Telegram and send: ${command}${copied ? " (copied to clipboard)" : ""}`, undefined, "system");
+}
 
 bot.start({
   onStart: () => {
-    console.log("DNA is alive. Listening for messages...");
+    logger.info("DNA is alive. Listening for messages...", undefined, "system");
   },
 });
 
 process.on("SIGINT", () => {
-  console.log("DNA shutting down...");
+  logger.info("DNA shutting down...", undefined, "system");
   bot.stop();
   process.exit(0);
 });

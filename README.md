@@ -1,14 +1,16 @@
 # DNA — Definitely Not Assistant
 
-A personal companion powered by Claude CLI, communicating via Telegram.
+A personal companion bot powered by Claude CLI and Telegram, with per-chat memory, reminders, configurable personality, and a web dashboard.
 
 ## Features
 
-- Chat naturally via Telegram bot
-- Memory — remembers facts and preferences across conversations
-- Reminders — set one-time or recurring reminders via natural language
-- History — daily conversation logs
-- Telegram Desktop control (via Electron MCP, optional)
+- **Chat** — natural conversation via Telegram, streaming responses
+- **Memory** — remembers facts and preferences per chat, keyword-based relevant loading
+- **Reminders** — one-time or recurring (daily/weekly/monthly) via natural language
+- **Per-chat config** — personality, tool permissions, action approval per chat/group
+- **Web dashboard** — live feed, chat history, memory editor, reminder management, per-chat settings
+- **Group chat support** — responds when @mentioned, configurable memory/actions per group
+- **Auto-summarization** — history summarized every 10 messages, memory files summarized when large
 
 ## Setup
 
@@ -19,58 +21,48 @@ A personal companion powered by Claude CLI, communicating via Telegram.
 
 2. Get a Telegram bot token from [@BotFather](https://t.me/BotFather)
 
-3. Find your Telegram user ID (message [@userinfobot](https://t.me/userinfobot))
+3. Ensure `claude` CLI is installed and authenticated
 
-4. Edit `data/config.json`:
-   ```json
-   {
-     "telegramBotToken": "YOUR_BOT_TOKEN",
-     "allowedUserId": YOUR_USER_ID,
-     "historyLimit": 20,
-     "mcpServerUrl": "ws://127.0.0.1:18789"
-   }
-   ```
-
-5. Ensure `claude` CLI is installed and authenticated.
-
-6. Start DNA:
+4. Start DNA:
    ```bash
    npm run dev
    ```
 
+5. On first run, enter your bot token when prompted. A pairing code appears — send `/start <code>` to your bot on Telegram to claim ownership.
+
+You can also set `TELEGRAM_BOT_TOKEN` as an environment variable to skip the prompt.
+
 ## Usage
 
-Message your bot on Telegram. Examples:
+Message your bot on Telegram:
 
 - "Remember that I like dark roast coffee"
 - "Remind me about standup tomorrow at 9am"
 - "What do you know about me?"
 - General chat and questions
 
-## Project Structure
+### Web Dashboard
 
-```
-src/
-├── index.ts          # entry point
-├── config.ts         # configuration loader
-├── bot.ts            # Telegram bot (grammY)
-├── engine.ts         # Claude engine (claude -p)
-├── actions.ts        # action marker parser
-├── memory.ts         # memory file read/write
-├── history.ts        # conversation history
-├── reminders.ts      # reminder management
-├── scheduler.ts      # cron-based reminder checker
-├── mcp-client.ts     # Electron MCP client (stub)
-└── system-prompt.ts  # system prompt builder
-data/
-├── config.json       # bot token, user ID, settings
-├── memory/           # markdown memory files
-├── history/          # daily JSON conversation logs
-└── reminders/        # active reminders
-```
+Open `http://localhost:3000` to access:
+- **Live feed** — real-time messages and logs with filtering
+- **Chats** — per-chat history, memory, reminders, and config management
+- **Settings** — manage allowed chats, bot config, notifications
+
+## Per-Chat Configuration
+
+Each chat gets its own folder under `data/chats/<chatId>/` with independent:
+- **Personality** — `default` (professional) or `casual-vi` (Vietnamese casual)
+- **Allowed tools** — which Claude tools are available (WebSearch, WebFetch, Read)
+- **Actions** — whether memory/reminder actions are enabled
+- **Confirmation** — whether the owner must approve actions via inline keyboard
+- **Memory** — whether memory is loaded into context
+
+Configure per chat via the web dashboard or `data/chats/<chatId>/config.json`.
 
 ## Testing
 
 ```bash
-npm test
+npm test              # All tests (unit + integration)
 ```
+
+Integration tests call the real Claude CLI subprocess to verify action markers are emitted correctly.

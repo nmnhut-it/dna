@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { dirname } from "path";
 import { randomUUID } from "crypto";
 
 // Reminder stored in active.json; datetime is ISO-8601 local (no Z suffix)
@@ -23,13 +24,16 @@ const RECURRENCE_DAYS: Record<string, number> = {
   monthly: 30,
 };
 
-/** Read all reminders from filePath. */
+/** Read all reminders from filePath. Returns [] if file missing. */
 export function loadReminders(filePath: string): Reminder[] {
+  if (!existsSync(filePath)) return [];
   return JSON.parse(readFileSync(filePath, "utf-8"));
 }
 
-/** Persist reminders array to filePath. */
+/** Persist reminders array to filePath, creating parent dir if needed. */
 function saveReminders(filePath: string, reminders: Reminder[]): void {
+  const dir = dirname(filePath);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   writeFileSync(filePath, JSON.stringify(reminders, null, 2));
 }
 
@@ -78,6 +82,15 @@ function advanceDatetimeByDays(datetime: string, days: number): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${dd}T${timePart}`;
+}
+
+/** Remove non-recurring reminders that have been notified (cleanup old entries). */
+export function cleanupNotified(filePath: string): void {
+  const reminders = loadReminders(filePath);
+  const kept = reminders.filter((r) => !r.notified || r.recurring);
+  if (kept.length < reminders.length) {
+    saveReminders(filePath, kept);
+  }
 }
 
 /** Append a new reminder scheduled one recurrence interval after the source. */

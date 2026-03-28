@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { loadReminders, addReminder, markNotified, getDueReminders, scheduleNextOccurrence } from "../reminders.js";
+import { loadReminders, addReminder, markNotified, getDueReminders, scheduleNextOccurrence, cleanupNotified } from "../reminders.js";
 import { mkdirSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 
@@ -61,5 +61,30 @@ describe("reminders", () => {
     scheduleNextOccurrence(ACTIVE_PATH, reminders[0].id);
     const updated = loadReminders(ACTIVE_PATH);
     expect(updated[1].datetime).toBe("2026-04-02T09:00:00");
+  });
+
+  it("returns empty array when file does not exist", () => {
+    expect(loadReminders("/nonexistent/path.json")).toEqual([]);
+  });
+
+  it("cleanupNotified removes one-time notified reminders", () => {
+    addReminder(ACTIVE_PATH, { text: "done", datetime: "2020-01-01T00:00:00", recurring: null });
+    addReminder(ACTIVE_PATH, { text: "pending", datetime: "2099-01-01T00:00:00", recurring: null });
+    const reminders = loadReminders(ACTIVE_PATH);
+    markNotified(ACTIVE_PATH, reminders[0].id);
+    cleanupNotified(ACTIVE_PATH);
+    const after = loadReminders(ACTIVE_PATH);
+    expect(after).toHaveLength(1);
+    expect(after[0].text).toBe("pending");
+  });
+
+  it("cleanupNotified keeps recurring reminders even if notified", () => {
+    addReminder(ACTIVE_PATH, { text: "daily", datetime: "2020-01-01T09:00:00", recurring: "daily" });
+    const reminders = loadReminders(ACTIVE_PATH);
+    markNotified(ACTIVE_PATH, reminders[0].id);
+    cleanupNotified(ACTIVE_PATH);
+    const after = loadReminders(ACTIVE_PATH);
+    expect(after).toHaveLength(1);
+    expect(after[0].text).toBe("daily");
   });
 });

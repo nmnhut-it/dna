@@ -1,37 +1,37 @@
 import { Router } from "express";
 import { loadReminders, addReminder } from "../reminders.js";
-import { writeFileSync } from "fs";
-import { join } from "path";
-import { DATA_DIR } from "../config.js";
+import { writeFileSync, existsSync } from "fs";
+import { chatPaths, ensureChatDirs } from "../config.js";
 
-const REMINDERS_PATH = join(DATA_DIR, "reminders", "active.json");
-
+/** /api/chats/:chatId/reminders — per-chat reminders. */
 export function remindersRouter(): Router {
   const router = Router();
 
-  router.get("/", (_req, res) => {
-    const reminders = loadReminders(REMINDERS_PATH);
-    res.json({ reminders });
+  router.get("/:chatId/reminders", (req, res) => {
+    const chatId = Number(req.params.chatId);
+    ensureChatDirs(chatId);
+    const { remindersPath } = chatPaths(chatId);
+    if (!existsSync(remindersPath)) { res.json({ reminders: [] }); return; }
+    res.json({ reminders: loadReminders(remindersPath) });
   });
 
-  router.post("/", (req, res) => {
+  router.post("/:chatId/reminders", (req, res) => {
+    const chatId = Number(req.params.chatId);
     const { text, datetime, recurring } = req.body;
-    if (!text || !datetime) {
-      res.status(400).json({ error: "text and datetime are required" });
-      return;
-    }
-    const reminder = addReminder(REMINDERS_PATH, {
-      text,
-      datetime,
-      recurring: recurring ?? null,
-    });
+    if (!text || !datetime) { res.status(400).json({ error: "text and datetime required" }); return; }
+    ensureChatDirs(chatId);
+    const { remindersPath } = chatPaths(chatId);
+    const reminder = addReminder(remindersPath, { text, datetime, recurring: recurring ?? null });
     res.json({ reminder });
   });
 
-  router.delete("/:id", (req, res) => {
-    const reminders = loadReminders(REMINDERS_PATH);
+  router.delete("/:chatId/reminders/:id", (req, res) => {
+    const chatId = Number(req.params.chatId);
+    const { remindersPath } = chatPaths(chatId);
+    if (!existsSync(remindersPath)) { res.json({ ok: true }); return; }
+    const reminders = loadReminders(remindersPath);
     const filtered = reminders.filter((r) => r.id !== req.params.id);
-    writeFileSync(REMINDERS_PATH, JSON.stringify(filtered, null, 2));
+    writeFileSync(remindersPath, JSON.stringify(filtered, null, 2));
     res.json({ ok: true });
   });
 

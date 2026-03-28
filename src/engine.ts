@@ -1,9 +1,11 @@
 import { spawn } from "child_process";
-import { readMemory, appendMemory, removeMemoryEntry } from "./memory.js";
-import { loadHistory, getTodayFileName } from "./history.js";
+import { readRelevantMemory, appendMemory, removeMemoryEntry } from "./memory.js";
+import { loadHistoryWithSummary } from "./history.js";
 import { loadReminders, addReminder } from "./reminders.js";
 import { buildSystemPrompt } from "./system-prompt.js";
 import { parseActions, stripActions, type ParsedAction } from "./actions.js";
+import type { ChatConfig } from "./config.js";
+import { logger } from "./logger.js";
 
 export interface ChatContext {
   chatId: number;
@@ -19,23 +21,33 @@ interface ContextPaths {
   historyLimit: number;
   isGroup?: boolean;
   chat?: ChatContext;
+  chatConfig?: ChatConfig;
+  chatDir?: string;
 }
 
 export function assembleContext(paths: ContextPaths): string {
-  const today = getTodayFileName();
-  const history = loadHistory(paths.historyDir, today, paths.historyLimit);
+  const history = loadHistoryWithSummary(paths.historyDir, paths.historyLimit);
 
   const historySnippet = history
     .map((m) => `${m.role}: ${m.content}`)
     .join("\n");
 
-  if (paths.isGroup) {
-    return buildSystemPrompt({ memory: "", reminders: [], historySnippet, isGroup: true, chat: paths.chat });
-  }
+  const personality = paths.chatConfig?.personality ?? "default";
+  const shouldLoadMemory = paths.chatConfig?.loadMemory ?? !paths.isGroup;
 
-  const memory = readMemory(paths.memoryDir);
-  const reminders = loadReminders(paths.remindersPath).filter((r) => !r.notified);
-  return buildSystemPrompt({ memory, reminders, historySnippet, isGroup: false, chat: paths.chat });
+  const recentTexts = history.map((m) => m.content);
+  const memory = shouldLoadMemory
+    ? readRelevantMemory(paths.memoryDir, recentTexts)
+    : "";
+
+  const reminders = shouldLoadMemory
+    ? loadReminders(paths.remindersPath).filter((r) => !r.notified)
+    : [];
+
+  return buildSystemPrompt({
+    memory, reminders, historySnippet,
+    isGroup: paths.isGroup, chat: paths.chat, personality,
+  });
 }
 
 export function executeActions(
@@ -69,19 +81,27 @@ export function executeActions(
 export function streamFromClaude(
   userMessage: string,
   systemPrompt: string,
-  onChunk: (accumulated: string) => void
+  onChunk: (accumulated: string) => void,
+  allowedTools: string[] = ["WebSearch", "WebFetch", "Read"],
+  chatDir?: string
 ): Promise<string> {
   return new Promise((resolve, reject) => {
+    const toolArgs = allowedTools.length > 0 ? ["--allowedTools", ...allowedTools] : [];
+    const dirArgs = chatDir ? ["--add-dir", chatDir] : [];
     const proc = spawn("claude", [
       "-p",
+      "--no-session-persistence",
+      "--permission-mode", "acceptEdits",
       "--system-prompt", systemPrompt,
-      "--allowedTools", "WebSearch", "WebFetch", "Read",
+      ...toolArgs,
+      ...dirArgs,
     ], {
       stdio: ["pipe", "pipe", "pipe"],
+      cwd: chatDir || undefined,
     });
 
     const killTimer = setTimeout(() => {
-      console.warn("claude process timed out after 5min, killing");
+      logger.warn("Claude process timed out after 5min, killing");
       proc.kill();
     }, 300_000);
 
@@ -102,7 +122,7 @@ export function streamFromClaude(
     });
 
     proc.stderr.on("data", (data: Buffer) => {
-      console.error("claude stderr:", data.toString());
+      logger.error(`Claude stderr: ${data.toString().trim()}`);
     });
 
     proc.on("close", (code, signal) => {
@@ -111,7 +131,7 @@ export function streamFromClaude(
         resolve(output.trim());
       } else if (output.trim()) {
         // Got partial output before crash — use what we have
-        console.warn(`claude exited with code=${code} signal=${signal}, using partial output`);
+        logger.warn(`Claude exited code=${code} signal=${signal}, using partial output`);
         resolve(output.trim());
       } else {
         reject(new Error(`claude exited with code=${code} signal=${signal}`));
@@ -144,12 +164,13 @@ export async function processMessageStream(
   let lastError: Error | undefined;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      rawResponse = await streamFromClaude(userMessage, systemPrompt, onChunk);
+      const allowedTools = paths.chatConfig?.allowedTools ?? ["WebSearch", "WebFetch", "Read"];
+      rawResponse = await streamFromClaude(userMessage, systemPrompt, onChunk, allowedTools, paths.chatDir);
       lastError = undefined;
       break;
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
-      console.error(`Claude attempt ${attempt}/${MAX_RETRIES} failed:`, lastError.message);
+      logger.error(`Claude attempt ${attempt}/${MAX_RETRIES} failed: ${lastError.message}`);
       if (attempt < MAX_RETRIES) {
         await new Promise((r) => setTimeout(r, 1000 * attempt));
       }
@@ -157,9 +178,6 @@ export async function processMessageStream(
   }
   if (lastError) throw lastError;
   const actions = parseActions(rawResponse);
-  if (!paths.isGroup) {
-    executeActions(actions, paths.memoryDir, paths.remindersPath);
-  }
   const reply = stripActions(rawResponse).trim();
   return { reply, actions };
 }

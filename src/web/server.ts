@@ -1,10 +1,12 @@
 import express from "express";
 import { join } from "path";
 import { configRouter } from "./api-config.js";
+import { chatConfigRouter } from "./api-chat-config.js";
 import { memoryRouter } from "./api-memory.js";
 import { historyRouter } from "./api-history.js";
 import { remindersRouter } from "./api-reminders.js";
 import { eventsRouter } from "./api-events.js";
+import { logger } from "../logger.js";
 
 export function createWebServer(port: number): express.Express {
   const app = express();
@@ -16,13 +18,14 @@ export function createWebServer(port: number): express.Express {
   });
 
   app.use("/api/config", configRouter());
-  app.use("/api/memory", memoryRouter());
-  app.use("/api/history", historyRouter());
-  app.use("/api/reminders", remindersRouter());
+  app.use("/api/chats", chatConfigRouter());
+  app.use("/api/chats", memoryRouter());
+  app.use("/api/chats", historyRouter());
+  app.use("/api/chats", remindersRouter());
   app.use("/api/events", eventsRouter());
 
   app.listen(port, () => {
-    console.log(`DNA dashboard at http://localhost:${port}`);
+    logger.info(`Dashboard at http://localhost:${port}`);
   });
 
   return app;

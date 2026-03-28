@@ -12,7 +12,7 @@ export function configRouter(): Router {
 
   router.put("/", (req, res) => {
     const config = loadConfig();
-    const allowed = ["pairSecret", "historyLimit", "webPort"] as const;
+    const allowed = ["historyLimit", "webPort"] as const;
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
         (config as unknown as Record<string, unknown>)[key] = req.body[key];
