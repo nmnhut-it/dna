@@ -24,15 +24,19 @@ const SUMMARIZE_EVERY = 10;
 export function loadHistoryWithSummary(historyDir: string, limit: number): HistoryMessage[] {
   const raw = loadRecentMessages(historyDir, limit);
   const summary = loadSummary(historyDir);
-  if (!summary?.text) return raw;
 
-  const summaryMsg: HistoryMessage = {
-    role: "system",
-    content: `[Earlier conversation summary] ${summary.text}`,
-    timestamp: summary.throughTimestamp,
-  };
-  return [summaryMsg, ...raw];
+  // If over word budget, trigger summarization of older messages (fire and forget)
+  if (countWords(raw) > MAX_HISTORY_WORDS && raw.length > SUMMARIZE_EVERY) {
+    summarizeOldMessages(historyDir).catch(() => {});
+  }
+
+  const result = summary?.text
+    ? [{ role: "system", content: `[Earlier conversation summary] ${summary.text}`, timestamp: summary.throughTimestamp } as HistoryMessage, ...raw]
+    : raw;
+  return result;
 }
+
+const MAX_HISTORY_WORDS = 3000;
 
 /** Loads the last `limit` raw messages across day files. */
 export function loadRecentMessages(historyDir: string, limit: number): HistoryMessage[] {
@@ -50,6 +54,11 @@ export function loadRecentMessages(historyDir: string, limit: number): HistoryMe
     if (collected.length >= limit) break;
   }
   return collected.slice(-limit);
+}
+
+/** Counts words in a message list. */
+function countWords(messages: HistoryMessage[]): number {
+  return messages.reduce((sum, m) => sum + m.content.split(/\s+/).length, 0);
 }
 
 /** Legacy overloads kept for compatibility. */

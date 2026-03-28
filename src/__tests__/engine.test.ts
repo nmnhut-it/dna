@@ -40,7 +40,7 @@ describe("assembleContext", () => {
       remindersPath: REMINDERS_PATH,
       historyLimit: 20,
     });
-    expect(result).toContain("professional");
+    expect(result).toContain("friendly, sharp");
   });
 
   it("uses custom personality from chatConfig", () => {
@@ -57,7 +57,7 @@ describe("assembleContext", () => {
         loadMemory: true,
       },
     });
-    expect(result).toContain("warm friend");
+    expect(result).toContain("close friend");
   });
 
   it("skips memory when loadMemory is false", () => {

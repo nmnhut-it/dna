@@ -1,16 +1,20 @@
 # DNA — Definitely Not Assistant
 
-A personal companion bot powered by Claude CLI and Telegram, with per-chat memory, reminders, configurable personality, and a web dashboard.
+A personal AI companion powered by Claude CLI and Telegram, with per-chat and per-user memory, reminders, configurable personality, and a web dashboard.
 
 ## Features
 
-- **Chat** — natural conversation via Telegram, streaming responses
-- **Memory** — remembers facts and preferences per chat, keyword-based relevant loading
-- **Reminders** — one-time or recurring (daily/weekly/monthly) via natural language
-- **Per-chat config** — personality, tool permissions, action approval per chat/group
-- **Web dashboard** — live feed, chat history, memory editor, reminder management, per-chat settings
-- **Group chat support** — responds when @mentioned, configurable memory/actions per group
-- **Auto-summarization** — history summarized every 10 messages, memory files summarized when large
+- **Chat** — natural conversation via Telegram with streaming responses
+- **Two-tier memory** — per-user memory (follows a person across chats) + per-chat memory (stays in one conversation)
+- **Auto-memory** — proactively saves noteworthy facts every 2 messages without being asked
+- **Reminders** — one-time or recurring (daily/weekly/monthly) via natural language, auto-cleanup
+- **History** — sliding window across days with rolling conversation summaries
+- **Per-chat config** — personality, tool permissions, action approval, memory toggle
+- **File access** — Claude can read/write files scoped to each chat's folder
+- **Owner commands** — manage settings, personality, tools, memory, users from Telegram
+- **Web dashboard** — live feed with log filtering, per-chat management
+- **Group chat** — responds when @mentioned, auth by sender ID, configurable per group
+- **Easy setup** — paste bot token, send a pairing code, done
 
 ## Setup
 
@@ -28,9 +32,7 @@ A personal companion bot powered by Claude CLI and Telegram, with per-chat memor
    npm run dev
    ```
 
-5. On first run, enter your bot token when prompted. A pairing code appears — send `/start <code>` to your bot on Telegram to claim ownership.
-
-You can also set `TELEGRAM_BOT_TOKEN` as an environment variable to skip the prompt.
+5. On first run, enter your bot token (or set `TELEGRAM_BOT_TOKEN` env var). A pairing code appears — send `/start <code>` to your bot on Telegram.
 
 ## Usage
 
@@ -41,28 +43,57 @@ Message your bot on Telegram:
 - "What do you know about me?"
 - General chat and questions
 
+### Memory System
+
+| Type | Scope | Category prefix | Example |
+|------|-------|-----------------|---------|
+| User memory | Follows the person across all chats | `user/` | `user/preferences`, `user/facts` |
+| Chat memory | Stays in one chat | (none) | `facts`, `topics/work` |
+
+The bot auto-saves noteworthy facts every 2 messages — personal details, preferences, plans — without needing to be asked.
+
+### Owner Commands
+
+| Command | Description |
+|---------|-------------|
+| `/settings` | View current chat config |
+| `/personality <preset>` | Set personality (`default`, `casual-vi`) |
+| `/tools <list>` | Set allowed tools |
+| `/toggle actions\|confirm\|memory` | Toggle features on/off |
+| `/memory` | View user + chat memory |
+| `/prompt` | View last system prompt sent to Claude |
+| `/adduser <id>` | Allow a user |
+| `/removeuser <id>` | Revoke access |
+
+Commands work in both private and group chats (owner only). In groups with privacy mode on, use `/command@botname`.
+
 ### Web Dashboard
 
-Open `http://localhost:3000` to access:
-- **Live feed** — real-time messages and logs with filtering
-- **Chats** — per-chat history, memory, reminders, and config management
-- **Settings** — manage allowed chats, bot config, notifications
+Open `http://localhost:3000`:
+- **Live** — real-time messages and structured logs with filtering
+- **Chats** — per-chat sub-tabs: history, memory, reminders, config
+- **Settings** — manage allowed users, bot-level config
 
-## Per-Chat Configuration
+## Data Structure
 
-Each chat gets its own folder under `data/chats/<chatId>/` with independent:
-- **Personality** — `default` (professional) or `casual-vi` (Vietnamese casual)
-- **Allowed tools** — which Claude tools are available (WebSearch, WebFetch, Read)
-- **Actions** — whether memory/reminder actions are enabled
-- **Confirmation** — whether the owner must approve actions via inline keyboard
-- **Memory** — whether memory is loaded into context
-
-Configure per chat via the web dashboard or `data/chats/<chatId>/config.json`.
+```
+data/
+├── config.json                    # bot token, allowed users, settings
+├── chats/<chatId>/                # per-chat isolation
+│   ├── config.json                # personality, tools, permissions
+│   ├── memory/                    # chat-scoped memory
+│   ├── history/                   # daily JSON + summary.json
+│   ├── reminders.json
+│   ├── tmp/                       # downloaded files
+│   └── last-prompt.md             # debug: last prompt sent to Claude
+└── users/<userId>/                # per-user (cross-chat)
+    └── memory/                    # user-scoped memory
+```
 
 ## Testing
 
 ```bash
-npm test              # All tests (unit + integration)
+npm test
 ```
 
-Integration tests call the real Claude CLI subprocess to verify action markers are emitted correctly.
+Includes unit tests and integration tests that call the real Claude CLI.

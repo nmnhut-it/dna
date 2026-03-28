@@ -3,7 +3,8 @@ import { processMessageStream, executeActions, type ChatContext } from "./engine
 import { appendHistory, getTodayFileName } from "./history.js";
 import { downloadTelegramFile } from "./files.js";
 import {
-  chatPaths, loadChatConfig, ensureChatDirs,
+  chatPaths, userPaths, loadChatConfig, saveChatConfig,
+  ensureChatDirs, ensureUserDirs,
   loadConfig, saveConfig, isConfigured,
   type ChatConfig, type Config,
 } from "./config.js";
@@ -22,12 +23,17 @@ interface PendingConfirmation {
   actions: ParsedAction[];
   memoryDir: string;
   remindersPath: string;
+  userMemoryDir?: string;
 }
 
 const pendingActions = new Map<string, PendingConfirmation>();
 
 function isGroupChat(chatId: number): boolean {
   return chatId < 0;
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function formatActionSummary(actions: ParsedAction[]): string {
@@ -44,6 +50,19 @@ function formatActionSummary(actions: ParsedAction[]): string {
 
 export function createBot(deps: BotDeps): Bot {
   const bot = new Bot(deps.token);
+
+  // Register commands with Telegram so the menu updates
+  bot.api.setMyCommands([
+    { command: "start", description: "Start or pair with the bot" },
+    { command: "settings", description: "View current chat settings" },
+    { command: "personality", description: "Set personality preset" },
+    { command: "tools", description: "Set allowed tools" },
+    { command: "toggle", description: "Toggle actions/confirm/memory" },
+    { command: "memory", description: "View stored memory" },
+    { command: "prompt", description: "View last system prompt" },
+    { command: "adduser", description: "Allow a user" },
+    { command: "removeuser", description: "Remove a user" },
+  ]).catch(() => {});
   let botId: number | undefined;
   let botUsername: string | undefined;
   let config = deps.config;
@@ -81,6 +100,135 @@ export function createBot(deps: BotDeps): Bot {
     await ctx.reply("Hi! Send me a message to get started.");
   });
 
+  // --- Owner-only commands (work in private and group chats) ---
+
+  function isOwner(ctx: Context): boolean {
+    return ctx.from?.id === config.ownerId;
+  }
+
+  bot.command("settings", async (ctx) => {
+    if (!isOwner(ctx)) return;
+    const chatId = ctx.chat!.id;
+    ensureChatDirs(chatId);
+    const chatCfg = loadChatConfig(chatId, config.ownerId);
+    const lines = [
+      `<b>Settings for chat ${chatId}</b>`,
+      ``,
+      `<b>Personality:</b> ${chatCfg.personality}`,
+      `<b>Tools:</b> ${chatCfg.allowedTools.join(", ") || "none"}`,
+      `<b>Actions:</b> ${chatCfg.allowActions ? "on" : "off"}`,
+      `<b>Confirm actions:</b> ${chatCfg.actionsRequireConfirmation ? "on" : "off"}`,
+      `<b>Load memory:</b> ${chatCfg.loadMemory ? "on" : "off"}`,
+      `<b>History limit:</b> ${config.historyLimit}`,
+      ``,
+      `Commands:`,
+      `/personality &lt;default|casual-vi&gt;`,
+      `/tools &lt;tool1, tool2, ...&gt;`,
+      `/toggle actions|confirm|memory`,
+      `/prompt — view current system prompt`,
+      `/adduser &lt;userId&gt;`,
+      `/removeuser &lt;userId&gt;`,
+    ];
+    await ctx.reply(lines.join("\n"), { parse_mode: "HTML" });
+  });
+
+  bot.command("personality", async (ctx) => {
+    if (!isOwner(ctx)) return;
+    const value = ctx.match?.trim();
+    if (!value) { await ctx.reply("Usage: /personality <default|casual-vi>"); return; }
+    const chatId = ctx.chat!.id;
+    ensureChatDirs(chatId);
+    const chatCfg = loadChatConfig(chatId, config.ownerId);
+    chatCfg.personality = value;
+    saveChatConfig(chatId, chatCfg);
+    await ctx.reply(`Personality set to: ${value}`);
+    logger.bot(`Personality changed to ${value}`, chatId);
+  });
+
+  bot.command("tools", async (ctx) => {
+    if (!isOwner(ctx)) return;
+    const value = ctx.match?.trim();
+    if (!value) { await ctx.reply("Usage: /tools WebSearch, WebFetch, Read, Edit, Write"); return; }
+    const chatId = ctx.chat!.id;
+    ensureChatDirs(chatId);
+    const chatCfg = loadChatConfig(chatId, config.ownerId);
+    chatCfg.allowedTools = value.split(",").map((s) => s.trim()).filter(Boolean);
+    saveChatConfig(chatId, chatCfg);
+    await ctx.reply(`Allowed tools: ${chatCfg.allowedTools.join(", ")}`);
+  });
+
+  bot.command("toggle", async (ctx) => {
+    if (!isOwner(ctx)) return;
+    const field = ctx.match?.trim();
+    const chatId = ctx.chat!.id;
+    ensureChatDirs(chatId);
+    const chatCfg = loadChatConfig(chatId, config.ownerId);
+    const toggleMap: Record<string, keyof ChatConfig> = {
+      actions: "allowActions",
+      confirm: "actionsRequireConfirmation",
+      memory: "loadMemory",
+    };
+    const key = toggleMap[field ?? ""];
+    if (!key) { await ctx.reply("Usage: /toggle actions|confirm|memory"); return; }
+    (chatCfg as unknown as Record<string, unknown>)[key] = !chatCfg[key];
+    saveChatConfig(chatId, chatCfg);
+    await ctx.reply(`${field}: ${chatCfg[key] ? "on" : "off"}`);
+  });
+
+  bot.command("prompt", async (ctx) => {
+    if (!isOwner(ctx)) return;
+    const chatId = ctx.chat!.id;
+    const paths = chatPaths(chatId);
+    const { readFileSync, existsSync } = await import("fs");
+    const logPath = `${paths.root}/last-prompt.md`;
+    if (!existsSync(logPath)) { await ctx.reply("No prompt logged yet. Send a message first."); return; }
+    const content = readFileSync(logPath, "utf-8");
+    // Telegram message limit is 4096 chars
+    if (content.length > 4000) {
+      await ctx.reply(`Prompt is ${content.length} chars. First 4000:\n\n<pre>${escapeHtml(content.slice(0, 4000))}</pre>`, { parse_mode: "HTML" });
+    } else {
+      await ctx.reply(`<pre>${escapeHtml(content)}</pre>`, { parse_mode: "HTML" });
+    }
+  });
+
+  bot.command("memory", async (ctx) => {
+    if (!isOwner(ctx)) return;
+    const chatId = ctx.chat!.id;
+    const userId = ctx.from!.id;
+    ensureChatDirs(chatId);
+    ensureUserDirs(userId);
+    const { readMemory } = await import("./memory.js");
+    const chatMem = readMemory(chatPaths(chatId).memoryDir);
+    const userMem = readMemory(userPaths(userId).memoryDir);
+    const sections: string[] = [];
+    if (userMem) sections.push(`<b>User memory:</b>\n${escapeHtml(userMem)}`);
+    if (chatMem) sections.push(`<b>Chat memory:</b>\n${escapeHtml(chatMem)}`);
+    if (!sections.length) { await ctx.reply("No memory stored."); return; }
+    const display = sections.join("\n\n---\n\n");
+    const output = display.length > 4000 ? display.slice(0, 4000) + "\n\n... (truncated)" : display;
+    await ctx.reply(output, { parse_mode: "HTML" });
+  });
+
+  bot.command("adduser", async (ctx) => {
+    if (!isOwner(ctx)) return;
+    const id = Number(ctx.match?.trim());
+    if (!id) { await ctx.reply("Usage: /adduser <userId>"); return; }
+    if (!config.allowedIds.includes(id)) {
+      config.allowedIds.push(id);
+      saveConfig(config);
+    }
+    await ctx.reply(`User ${id} added. Total allowed: ${config.allowedIds.length}`);
+  });
+
+  bot.command("removeuser", async (ctx) => {
+    if (!isOwner(ctx)) return;
+    const id = Number(ctx.match?.trim());
+    if (!id) { await ctx.reply("Usage: /removeuser <userId>"); return; }
+    config.allowedIds = config.allowedIds.filter((i) => i !== id);
+    saveConfig(config);
+    await ctx.reply(`User ${id} removed.`);
+  });
+
   bot.use(async (ctx, next) => {
     if (!botId) {
       const me = await bot.api.getMe();
@@ -111,7 +259,10 @@ export function createBot(deps: BotDeps): Bot {
     }
 
     ensureChatDirs(chatId);
+    const senderId = msg.from?.id;
+    if (senderId) ensureUserDirs(senderId);
     const paths = chatPaths(chatId);
+    const uPaths = senderId ? userPaths(senderId) : undefined;
     const chatConfig = loadChatConfig(chatId, config.ownerId);
     const today = getTodayFileName();
     const timestamp = new Date().toISOString();
@@ -180,6 +331,7 @@ export function createBot(deps: BotDeps): Bot {
 
     const enginePaths = {
       memoryDir: paths.memoryDir,
+      userMemoryDir: uPaths?.memoryDir,
       historyDir: paths.historyDir,
       remindersPath: paths.remindersPath,
       historyLimit: deps.historyLimit,
@@ -238,13 +390,14 @@ export function createBot(deps: BotDeps): Bot {
             actions: stateActions,
             memoryDir: paths.memoryDir,
             remindersPath: paths.remindersPath,
+            userMemoryDir: uPaths?.memoryDir,
           });
           const keyboard = new InlineKeyboard()
             .text("✓ Confirm", `confirm:${key}`)
             .text("✗ Cancel", `cancel:${key}`);
           await ctx.reply(summary, { reply_markup: keyboard, parse_mode: "HTML" });
         } else {
-          executeActions(stateActions, paths.memoryDir, paths.remindersPath);
+          executeActions(stateActions, paths.memoryDir, paths.remindersPath, uPaths?.memoryDir);
         }
       }
 
@@ -278,7 +431,7 @@ export function createBot(deps: BotDeps): Bot {
 
     pendingActions.delete(key);
     if (isConfirm) {
-      executeActions(pending.actions, pending.memoryDir, pending.remindersPath);
+      executeActions(pending.actions, pending.memoryDir, pending.remindersPath, pending.userMemoryDir);
       await ctx.answerCallbackQuery({ text: "Done." });
       await ctx.editMessageText("✓ Actions executed.");
     } else {

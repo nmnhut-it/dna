@@ -35,24 +35,24 @@ describe("buildSystemPrompt", () => {
 describe("personality presets", () => {
   it("uses professional default personality by default", () => {
     const prompt = buildSystemPrompt({ memory: "", reminders: [], historySnippet: "" });
-    expect(prompt).toContain("helpful, concise, and professional");
+    expect(prompt).toContain("friendly, sharp, and concise");
     expect(prompt).not.toContain("casual-vi");
   });
 
   it("uses default personality when personality is 'default'", () => {
     const prompt = buildSystemPrompt({ memory: "", reminders: [], historySnippet: "", personality: "default" });
-    expect(prompt).toContain("helpful, concise, and professional");
+    expect(prompt).toContain("friendly, sharp, and concise");
   });
 
   it("uses casual-vi personality when specified", () => {
     const prompt = buildSystemPrompt({ memory: "", reminders: [], historySnippet: "", personality: "casual-vi" });
-    expect(prompt).toContain("warm friend");
+    expect(prompt).toContain("close friend");
     expect(prompt).toContain("Xưng hô");
   });
 
   it("falls back to default for unknown personality", () => {
     const prompt = buildSystemPrompt({ memory: "", reminders: [], historySnippet: "", personality: "nonexistent" });
-    expect(prompt).toContain("helpful, concise, and professional");
+    expect(prompt).toContain("friendly, sharp, and concise");
   });
 
   it("does not include Vietnamese slang in default personality", () => {
@@ -81,6 +81,6 @@ describe("group chat rules", () => {
 
   it("respects personality in group chats", () => {
     const prompt = buildSystemPrompt({ memory: "", reminders: [], historySnippet: "", isGroup: true, personality: "casual-vi" });
-    expect(prompt).toContain("warm friend");
+    expect(prompt).toContain("close friend");
   });
 });

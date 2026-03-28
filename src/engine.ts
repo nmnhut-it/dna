@@ -1,4 +1,6 @@
 import { spawn } from "child_process";
+import { writeFileSync } from "fs";
+import { join } from "path";
 import { readRelevantMemory, appendMemory, removeMemoryEntry } from "./memory.js";
 import { loadHistoryWithSummary } from "./history.js";
 import { loadReminders, addReminder } from "./reminders.js";
@@ -16,6 +18,7 @@ export interface ChatContext {
 
 interface ContextPaths {
   memoryDir: string;
+  userMemoryDir?: string;
   historyDir: string;
   remindersPath: string;
   historyLimit: number;
@@ -36,9 +39,13 @@ export function assembleContext(paths: ContextPaths): string {
   const shouldLoadMemory = paths.chatConfig?.loadMemory ?? !paths.isGroup;
 
   const recentTexts = history.map((m) => m.content);
-  const memory = shouldLoadMemory
+  const chatMemory = shouldLoadMemory
     ? readRelevantMemory(paths.memoryDir, recentTexts)
     : "";
+  const userMemory = shouldLoadMemory && paths.userMemoryDir
+    ? readRelevantMemory(paths.userMemoryDir, recentTexts)
+    : "";
+  const memory = [chatMemory, userMemory].filter(Boolean).join("\n\n---\n\n");
 
   const reminders = shouldLoadMemory
     ? loadReminders(paths.remindersPath).filter((r) => !r.notified)
@@ -53,16 +60,27 @@ export function assembleContext(paths: ContextPaths): string {
 export function executeActions(
   actions: ParsedAction[],
   memoryDir: string,
-  remindersPath: string
+  remindersPath: string,
+  userMemoryDir?: string
 ): void {
   for (const action of actions) {
     switch (action.type) {
-      case "REMEMBER":
-        appendMemory(memoryDir, action.params.category, action.params.content);
+      case "REMEMBER": {
+        const cat = action.params.category;
+        const isUserMemory = cat.startsWith("user/");
+        const targetDir = isUserMemory && userMemoryDir ? userMemoryDir : memoryDir;
+        const targetCat = isUserMemory ? cat.slice(5) : cat;
+        appendMemory(targetDir, targetCat, action.params.content);
         break;
-      case "FORGET":
-        removeMemoryEntry(memoryDir, action.params.category, action.params.content);
+      }
+      case "FORGET": {
+        const cat = action.params.category;
+        const isUserMemory = cat.startsWith("user/");
+        const targetDir = isUserMemory && userMemoryDir ? userMemoryDir : memoryDir;
+        const targetCat = isUserMemory ? cat.slice(5) : cat;
+        removeMemoryEntry(targetDir, targetCat, action.params.content);
         break;
+      }
       case "REMIND":
         addReminder(remindersPath, {
           text: action.params.text,
@@ -159,6 +177,17 @@ export async function processMessageStream(
   onChunk: (text: string) => void
 ): Promise<ProcessResult> {
   const systemPrompt = assembleContext(paths);
+
+  // Log full prompt to chat dir for debugging
+  if (paths.chatDir) {
+    const chatId = paths.chat?.chatId;
+    try {
+      const logPath = join(paths.chatDir, "last-prompt.md");
+      const logContent = `# Prompt sent at ${new Date().toISOString()}\n\n## System Prompt\n\n${systemPrompt}\n\n## User Message\n\n${userMessage}\n`;
+      writeFileSync(logPath, logContent);
+      logger.engine(`Prompt logged to last-prompt.md (${systemPrompt.length} chars)`, chatId);
+    } catch { /* non-critical */ }
+  }
 
   let rawResponse = "";
   let lastError: Error | undefined;

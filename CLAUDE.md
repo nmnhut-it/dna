@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-DNA — a personal companion bot powered by Claude CLI and Telegram, with per-chat memory, reminders, configurable personality, and a web dashboard.
+DNA — a personal AI companion bot powered by Claude CLI and Telegram, with two-tier memory (per-user + per-chat), reminders, configurable personality, and a web dashboard.
 
 ## Commands
 
@@ -18,29 +18,34 @@ npm run tauri:build  # Tauri desktop release
 
 ## Architecture
 
-**Data flow:** Telegram message → bot.ts (auth: allowedIds OR allowed sender in group) → engine.ts (assemble context with relevant memory + sliding history + summary, spawn `claude -p` subprocess) → actions.ts (parse `[ACTION:TYPE]` markers) → bot.ts (owner confirmation if required, then execute) → streamed response back to Telegram.
+**Data flow:** Telegram message → bot.ts (auth: allowedIds OR allowed sender) → engine.ts (assemble context with user memory + chat memory + sliding history + summary, spawn `claude -p` subprocess) → actions.ts (parse `[ACTION:TYPE]` markers) → bot.ts (owner confirmation if required, then execute) → streamed response back to Telegram.
 
 **Key modules:**
 - `src/index.ts` — Entry point: interactive setup or env var config, boots bot, web server, scheduler
-- `src/bot.ts` — grammY handler; pairing via `/start <code>`, streaming edits, action confirmation with inline keyboards, owner-only approval
-- `src/engine.ts` — Spawns `claude -p --no-session-persistence` with per-chat tool permissions; 3 retries with backoff, 5min timeout
-- `src/system-prompt.ts` — Dynamic system prompt with personality presets (`default`, `casual-vi`), memory, reminders, history; strong action marker instructions with examples
+- `src/bot.ts` — grammY handler; pairing via `/start <code>`, owner commands (/settings, /personality, /tools, /toggle, /memory, /prompt, /adduser, /removeuser), streaming edits, action confirmation with inline keyboards
+- `src/engine.ts` — Spawns `claude -p --no-session-persistence --permission-mode acceptEdits` with per-chat tool permissions and `--add-dir` + `cwd` set to chat folder; 3 retries with backoff, 5min timeout; logs full prompt to `last-prompt.md`
+- `src/system-prompt.ts` — Dynamic system prompt with personality presets (`default`, `casual-vi`), merged user+chat memory, history; strong action marker instructions with examples; auto-memory instructions (every 2 turns)
 - `src/actions.ts` — Regex parser for `[ACTION:REMEMBER|FORGET|REMIND|REACT ...]` markers
-- `src/memory.ts` — Keyword-based relevant memory loading (root files always, topic files by keyword match); auto-summarization of files exceeding 30 bullet points via Claude CLI
-- `src/reminders.ts` — JSON reminders with daily/weekly/monthly recurrence; auto-cleanup of notified one-time reminders
+- `src/memory.ts` — Keyword-based relevant memory loading; auto-summarization via Claude CLI for files >30 bullets
+- `src/reminders.ts` — JSON reminders with recurrence; auto-cleanup of notified one-time reminders
 - `src/scheduler.ts` — Dynamically discovers all chat folders; reminders every minute, memory summarization + cleanup daily at 3am
-- `src/history.ts` — Sliding window across day files; rolling summary (every 10 messages, Claude summarizes older ones into `summary.json`)
-- `src/config.ts` — Global config + per-chat `ChatConfig` (personality, allowedTools, allowActions, actionsRequireConfirmation, loadMemory)
-- `src/logger.ts` — Structured logging with timestamps, categories, chat IDs; emits to SSE event bus
-- `src/web/` — Express server with per-chat REST APIs + SSE live feed
+- `src/history.ts` — Sliding window across day files; rolling summary every 10 messages
+- `src/config.ts` — Global config + per-chat ChatConfig + per-user paths
+- `src/logger.ts` — Structured logging with timestamps, categories, chat IDs; emits to SSE
+- `src/web/` — Express server with per-chat REST APIs + chat config API + SSE live feed
+
+**Two-tier memory:**
+- `data/users/<userId>/memory/` — personal facts that follow a user across all chats (category prefix: `user/`)
+- `data/chats/<chatId>/memory/` — chat-specific context (no prefix)
 
 **Per-chat folder tree** (`data/chats/<chatId>/`):
 ```
 config.json      # ChatConfig: personality, tools, permissions
-memory/          # Markdown files (facts.md, preferences.md, topics/*.md)
-history/         # Daily JSON + summary.json (rolling conversation summary)
-reminders.json   # Active reminders for this chat
+memory/          # Chat-scoped markdown memory files
+history/         # Daily JSON + summary.json
+reminders.json   # Active reminders
 tmp/             # Downloaded Telegram files
+last-prompt.md   # Debug: last full prompt sent to Claude
 ```
 
 ## Bootstrapping
@@ -48,19 +53,21 @@ tmp/             # Downloaded Telegram files
 - First run: prompts for Telegram bot token (or reads `TELEGRAM_BOT_TOKEN` env var)
 - Displays 6-digit pairing code (auto-copied to clipboard)
 - Owner sends `/start <code>` in Telegram to claim ownership
-- Per-chat dirs created automatically on first message
+- Per-chat and per-user dirs created automatically on first message
 
 ## Group Chat Behavior
 
 - Responds when @mentioned or replied to
-- Auth: any message from a user in `allowedIds` passes (group ID doesn't need to be in the list)
-- Memory/actions controlled by per-chat `ChatConfig.loadMemory` and `ChatConfig.allowActions` (default: memory off, actions off for groups)
+- Auth: any message from a user in `allowedIds` passes
+- Owner commands work in groups too
+- Memory/actions controlled by per-chat ChatConfig (default: memory off, actions off for groups)
 
 ## Conventions
 
-- Personality presets defined in `PERSONALITIES` map in system-prompt.ts; owner gets `casual-vi`, others get `default` (professional)
-- Action markers are stripped from displayed output; REACT always executes immediately, other actions go through confirmation if `actionsRequireConfirmation` is true
-- Memory: root-level .md files always loaded, topic files loaded only when topic name appears in recent messages
-- History: sliding window loads last N messages across days; rolling summary prepended as system message
-- Reminders use local ISO-8601 datetime (no timezone suffix); recurrence uses fixed day counts (1/7/30)
+- Personality presets in `PERSONALITIES` map in system-prompt.ts; owner gets `casual-vi`, others get `default`
+- Responses target ~50 words unless explaining something complex
+- Action markers stripped from output; REACT always immediate, others go through confirmation if configured
+- `user/` prefix on category routes memory to user-level storage; plain categories go to chat-level
+- Auto-memory: Claude proactively saves noteworthy facts every 2 user messages
 - All logging through `src/logger.ts` with `[HH:MM:SS] [category] [chat:ID] message` format
+- Bot commands registered with Telegram on startup via `setMyCommands`

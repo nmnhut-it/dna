@@ -5,6 +5,7 @@ import { createInterface } from "readline";
 const DATA_DIR = join(import.meta.dirname, "..", "data");
 const CONFIG_PATH = join(DATA_DIR, "config.json");
 const CHATS_DIR = join(DATA_DIR, "chats");
+const USERS_DIR = join(DATA_DIR, "users");
 
 export interface Config {
   telegramBotToken: string;
@@ -139,4 +140,20 @@ export function ensureChatDirs(chatId: number): void {
   mkdirSync(paths.tmpDir, { recursive: true });
 }
 
-export { DATA_DIR, CHATS_DIR };
+/** Per-user directory paths (memory that follows a user across chats). */
+export function userPaths(userId: number) {
+  const root = join(USERS_DIR, String(userId));
+  mkdirSync(root, { recursive: true });
+  return {
+    root,
+    memoryDir: join(root, "memory"),
+  };
+}
+
+/** Bootstraps user directories. */
+export function ensureUserDirs(userId: number): void {
+  const paths = userPaths(userId);
+  mkdirSync(join(paths.memoryDir, "topics"), { recursive: true });
+}
+
+export { DATA_DIR, CHATS_DIR, USERS_DIR };
