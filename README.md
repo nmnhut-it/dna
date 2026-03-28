@@ -1,93 +1,86 @@
-# DNA — Definitely Not Assistant
+# DNA — Definitely Not (an) Assistant
 
-A personal AI companion powered by Claude CLI and Telegram, with per-chat and per-user memory, reminders, configurable personality, and a web dashboard.
+> "It's not an assistant. It just remembers everything you say, sets your reminders, manages your files, and responds to you 24/7. Totally different."
 
-## Features
+A personal AI companion powered by Claude CLI and Telegram. It remembers you better than you remember yourself, nags you about things you asked to be nagged about, and has opinions.
 
-- **Chat** — natural conversation via Telegram with streaming responses
-- **Two-tier memory** — per-user memory (follows a person across chats) + per-chat memory (stays in one conversation)
-- **Auto-memory** — proactively saves noteworthy facts every 2 messages without being asked
-- **Reminders** — one-time or recurring (daily/weekly/monthly) via natural language, auto-cleanup
-- **History** — sliding window across days with rolling conversation summaries
-- **Per-chat config** — personality, tool permissions, action approval, memory toggle
-- **File access** — Claude can read/write files scoped to each chat's folder
-- **Owner commands** — manage settings, personality, tools, memory, users from Telegram
-- **Web dashboard** — live feed with log filtering, per-chat management
-- **Group chat** — responds when @mentioned, auth by sender ID, configurable per group
-- **Easy setup** — paste bot token, send a pairing code, done
+## What It Does (It's Not Assisting, It's Vibing)
 
-## Setup
+- **Talks to you** — via Telegram, like a friend who never sleeps and always has an answer
+- **Remembers things** — two-tier memory: stuff about *you* (follows you everywhere) and stuff about *this chat* (stays here)
+- **Auto-remembers** — picks up on your preferences, plans, and habits without being asked. Creepy? Maybe. Useful? Absolutely.
+- **Reminds you** — one-time or recurring. Will not judge you for needing a reminder to drink water.
+- **Reads & writes files** — scoped to each chat's folder, because boundaries matter
+- **Works in groups** — responds when @mentioned, keeps its mouth shut otherwise
+- **Has a dashboard** — live feed, memory viewer, config editor. Very fancy. `localhost:3000`.
+- **Easy setup** — paste a token, type a code, done. Your boss could do it.
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+## Setup (3 Minutes, We Timed It)
 
-2. Get a Telegram bot token from [@BotFather](https://t.me/BotFather)
+```bash
+npm install
+npm run dev
+```
 
-3. Ensure `claude` CLI is installed and authenticated
+First run asks for your Telegram bot token (get one from [@BotFather](https://t.me/BotFather)). Then it shows a pairing code — send `/start <code>` to your bot. That's it. You're the owner now. Congratulations, it's a bot.
 
-4. Start DNA:
-   ```bash
-   npm run dev
-   ```
+You'll also need the `claude` CLI installed and authenticated. DNA is just the personality layer — Claude does the actual thinking.
 
-5. On first run, enter your bot token (or set `TELEGRAM_BOT_TOKEN` env var). A pairing code appears — send `/start <code>` to your bot on Telegram.
+## Talking To It
 
-## Usage
+Message your bot on Telegram. It'll figure out the rest.
 
-Message your bot on Telegram:
+- "Remember that I like dark roast coffee" — saved to your permanent record
+- "Remind me about standup tomorrow at 9am" — it will. relentlessly.
+- "What do you know about me?" — prepare to be impressed (or unsettled)
+- Anything else — it's a conversation, not a form
 
-- "Remember that I like dark roast coffee"
-- "Remind me about standup tomorrow at 9am"
-- "What do you know about me?"
-- General chat and questions
+### The Memory System (It Remembers So You Don't Have To)
 
-### Memory System
+| Type | What it is | Category prefix |
+|------|-----------|-----------------|
+| **User memory** | Follows you across all chats. Your name, your coffee order, your life choices. | `user/` |
+| **Chat memory** | Stays in one conversation. Project context, shared topics, group inside jokes. | (none) |
 
-| Type | Scope | Category prefix | Example |
-|------|-------|-----------------|---------|
-| User memory | Follows the person across all chats | `user/` | `user/preferences`, `user/facts` |
-| Chat memory | Stays in one chat | (none) | `facts`, `topics/work` |
+Auto-saves every ~2 messages. You don't need to say "remember this" — it just... notices.
 
-The bot auto-saves noteworthy facts every 2 messages — personal details, preferences, plans — without needing to be asked.
+### Owner Commands (You're In Charge)
 
-### Owner Commands
-
-| Command | Description |
+| Command | What it does |
 |---------|-------------|
-| `/settings` | View current chat config |
-| `/personality <preset>` | Set personality (`default`, `casual-vi`) |
-| `/tools <list>` | Set allowed tools |
-| `/toggle actions\|confirm\|memory` | Toggle features on/off |
-| `/memory` | View user + chat memory |
-| `/prompt` | View last system prompt sent to Claude |
-| `/adduser <id>` | Allow a user |
-| `/removeuser <id>` | Revoke access |
+| `/settings` | See what's going on |
+| `/personality <preset>` | `default` (professional) or `casual-vi` (Vietnamese bestie mode) |
+| `/tools <list>` | Control what Claude can use |
+| `/toggle actions\|confirm\|memory` | Flip switches |
+| `/memory` | See what it knows about you (brace yourself) |
+| `/prompt` | See the actual prompt sent to Claude. Educational. |
+| `/adduser <id>` | Let someone else talk to your bot |
+| `/removeuser <id>` | Revoke that privilege |
 
-Commands work in both private and group chats (owner only). In groups with privacy mode on, use `/command@botname`.
+Works in groups too. Only the owner can use these — everyone else gets politely ignored.
 
-### Web Dashboard
+### The Dashboard
 
-Open `http://localhost:3000`:
-- **Live** — real-time messages and structured logs with filtering
-- **Chats** — per-chat sub-tabs: history, memory, reminders, config
-- **Settings** — manage allowed users, bot-level config
+`http://localhost:3000` — because sometimes you want a GUI.
 
-## Data Structure
+- **Live** — watch messages and logs scroll by in real-time
+- **Chats** — per-chat history, memory, reminders, config
+- **Settings** — manage who's allowed in
+
+## Where It Keeps Its Stuff
 
 ```
 data/
-├── config.json                    # bot token, allowed users, settings
-├── chats/<chatId>/                # per-chat isolation
-│   ├── config.json                # personality, tools, permissions
-│   ├── memory/                    # chat-scoped memory
-│   ├── history/                   # daily JSON + summary.json
-│   ├── reminders.json
+├── config.json                    # the basics
+├── chats/<chatId>/                # each chat gets its own universe
+│   ├── config.json                # personality, permissions
+│   ├── memory/                    # what it remembers about this chat
+│   ├── history/                   # conversation logs + rolling summaries
+│   ├── reminders.json             # the nagging schedule
 │   ├── tmp/                       # downloaded files
-│   └── last-prompt.md             # debug: last prompt sent to Claude
-└── users/<userId>/                # per-user (cross-chat)
-    └── memory/                    # user-scoped memory
+│   └── last-prompt.md             # for the curious (or debugging)
+└── users/<userId>/                # follows the human, not the chat
+    └── memory/                    # the permanent record
 ```
 
 ## Testing
@@ -96,4 +89,4 @@ data/
 npm test
 ```
 
-Includes unit tests and integration tests that call the real Claude CLI.
+86 tests including integration tests that talk to real Claude. Yes, we test against the actual AI. No mocks were harmed.
