@@ -17,14 +17,21 @@ A personal AI companion powered by Claude CLI and Telegram. It remembers you bet
 
 ## Setup (3 Minutes, We Timed It)
 
+Prerequisites: [Node.js](https://nodejs.org/) and [Claude CLI](https://docs.anthropic.com/en/docs/claude-cli) installed and authenticated.
+
 ```bash
+git clone https://github.com/nmnhut-it/dna.git
+cd dna
 npm install
 npm run dev
 ```
 
 First run asks for your Telegram bot token (get one from [@BotFather](https://t.me/BotFather)). Then it shows a pairing code — send `/start <code>` to your bot. That's it. You're the owner now. Congratulations, it's a bot.
 
-You'll also need the `claude` CLI installed and authenticated. DNA is just the personality layer — Claude does the actual thinking.
+Or if you're feeling fancy, one-liner:
+```bash
+git clone https://github.com/nmnhut-it/dna.git && cd dna && npm install && npm run dev
+```
 
 ## Talking To It
 
