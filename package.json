@@ -10,6 +10,7 @@
     "dev": "tsx src/index.ts",
     "build": "tsc",
     "test": "vitest run",
+    "all": "concurrently -n backend,widget -c blue,yellow \"npm run dev\" \"npm run widget:dev\"",
     "widget:dev": "cd widget && cargo run",
     "widget:build": "cd widget && cargo build --release"
   },
@@ -24,9 +25,10 @@
     "typescript": "^6.0.2"
   },
   "devDependencies": {
-"@types/express": "^5.0.6",
+    "@types/express": "^5.0.6",
     "@types/node": "^25.5.0",
     "@types/node-cron": "^3.0.11",
+    "concurrently": "^9.2.1",
     "tsx": "^4.21.0",
     "vitest": "^4.1.1"
   }
