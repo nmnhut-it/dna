@@ -74,6 +74,13 @@ pub fn run() {
                 })
                 .build(app)?;
 
+            // --- Make widget window truly transparent on Windows ---
+            #[cfg(target_os = "windows")]
+            if let Some(widget_window) = app.get_webview_window("widget") {
+                use tauri::window::Color;
+                let _ = widget_window.set_background_color(Some(Color(0, 0, 0, 0)));
+            }
+
             // --- Spawn Node.js backend (release only; dev uses beforeDevCommand) ---
             if !cfg!(debug_assertions) {
                 use tauri_plugin_shell::ShellExt;
