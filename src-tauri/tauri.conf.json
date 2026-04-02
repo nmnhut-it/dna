@@ -5,21 +5,31 @@
   "identifier": "com.dna.app",
   "build": {
     "frontendDist": "http://localhost:3000",
-    "devUrl": "http://localhost:3000",
-    "beforeDevCommand": "npm run dev"
+    "devUrl": "http://localhost:3000"
   },
   "app": {
     "windows": [
       {
-        "title": "DNA Dashboard",
-        "width": 1200,
-        "height": 800,
-        "resizable": true,
-        "fullscreen": false
+        "label": "widget",
+        "title": "DNA",
+        "url": "/widget/",
+        "width": 240,
+        "height": 400,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "x": 1650,
+        "y": 600
       }
     ],
     "security": {
       "csp": null
+    },
+    "trayIcon": {
+      "iconPath": "icons/icon.png",
+      "tooltip": "DNA Companion"
     }
   },
   "bundle": {
@@ -32,5 +42,19 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "shell": {
+      "scope": [
+        {
+          "name": "npx",
+          "cmd": "npx",
+          "args": ["tsx", "src/index.ts"]
+        }
+      ]
+    },
+    "autostart": {
+      "args": []
+    }
   }
 }
