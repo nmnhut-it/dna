@@ -5,7 +5,8 @@
   "identifier": "com.dna.app",
   "build": {
     "frontendDist": "http://localhost:3000",
-    "devUrl": "http://localhost:3000"
+    "devUrl": "http://localhost:3000",
+    "beforeDevCommand": "npm run dev"
   },
   "app": {
     "windows": [

@@ -74,35 +74,37 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            // --- Spawn Node.js backend ---
-            use tauri_plugin_shell::ShellExt;
-            let shell = app.shell();
-            let (mut rx, _child) = shell
-                .command("npx")
-                .args(["tsx", "src/index.ts"])
-                .spawn()
-                .expect("Failed to start DNA backend");
+            // --- Spawn Node.js backend (release only; dev uses beforeDevCommand) ---
+            if !cfg!(debug_assertions) {
+                use tauri_plugin_shell::ShellExt;
+                let shell = app.shell();
+                let (mut rx, _child) = shell
+                    .command("npx")
+                    .args(["tsx", "src/index.ts"])
+                    .spawn()
+                    .expect("Failed to start DNA backend");
 
-            tauri::async_runtime::spawn(async move {
-                use tauri_plugin_shell::process::CommandEvent;
-                while let Some(event) = rx.recv().await {
-                    match event {
-                        CommandEvent::Stdout(line) => {
-                            let s = String::from_utf8_lossy(&line);
-                            log::info!("[backend] {}", s.trim());
+                tauri::async_runtime::spawn(async move {
+                    use tauri_plugin_shell::process::CommandEvent;
+                    while let Some(event) = rx.recv().await {
+                        match event {
+                            CommandEvent::Stdout(line) => {
+                                let s = String::from_utf8_lossy(&line);
+                                log::info!("[backend] {}", s.trim());
+                            }
+                            CommandEvent::Stderr(line) => {
+                                let s = String::from_utf8_lossy(&line);
+                                log::warn!("[backend] {}", s.trim());
+                            }
+                            CommandEvent::Terminated(status) => {
+                                log::error!("[backend] Process terminated: {:?}", status);
+                                break;
+                            }
+                            _ => {}
                         }
-                        CommandEvent::Stderr(line) => {
-                            let s = String::from_utf8_lossy(&line);
-                            log::warn!("[backend] {}", s.trim());
-                        }
-                        CommandEvent::Terminated(status) => {
-                            log::error!("[backend] Process terminated: {:?}", status);
-                            break;
-                        }
-                        _ => {}
                     }
-                }
-            });
+                });
+            }
 
             // --- Enable autostart ---
             #[cfg(desktop)]
