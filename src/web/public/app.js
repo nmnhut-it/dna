@@ -236,6 +236,7 @@ async function loadChatConfig(chatId) {
       <label class="toggle-label"><input type="checkbox" id="cfg-allowActions"${cfg.allowActions ? " checked" : ""}> Allow actions (remember/remind)</label>
       <label class="toggle-label"><input type="checkbox" id="cfg-confirmActions"${cfg.actionsRequireConfirmation ? " checked" : ""}> Require owner confirmation</label>
       <label class="toggle-label"><input type="checkbox" id="cfg-loadMemory"${cfg.loadMemory ? " checked" : ""}> Load memory into context</label>
+      <label class="toggle-label"><input type="checkbox" id="cfg-listenAll"${cfg.listenAll ? " checked" : ""}> Listen to all group messages (silent observer)</label>
       <button class="btn-primary" id="save-chat-config">Save</button>
     </div>`;
 
@@ -249,6 +250,7 @@ async function loadChatConfig(chatId) {
         allowActions: document.getElementById("cfg-allowActions").checked,
         actionsRequireConfirmation: document.getElementById("cfg-confirmActions").checked,
         loadMemory: document.getElementById("cfg-loadMemory").checked,
+        listenAll: document.getElementById("cfg-listenAll").checked,
       }),
     });
     showToast("Chat config saved");

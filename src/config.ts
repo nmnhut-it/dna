@@ -22,6 +22,7 @@ export interface ChatConfig {
   allowActions: boolean;
   actionsRequireConfirmation: boolean;
   loadMemory: boolean;
+  listenAll: boolean;
 }
 
 const DEFAULT_CHAT_CONFIG: ChatConfig = {
@@ -30,6 +31,7 @@ const DEFAULT_CHAT_CONFIG: ChatConfig = {
   allowActions: true,
   actionsRequireConfirmation: true,
   loadMemory: true,
+  listenAll: false,
 };
 
 function prompt(question: string): Promise<string> {

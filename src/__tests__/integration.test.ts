@@ -34,7 +34,7 @@ describe("integration: Claude emits action markers", () => {
         allowedTools: [],
         allowActions: true,
         actionsRequireConfirmation: false,
-        loadMemory: true,
+        loadMemory: true, listenAll: false,
       },
     });
 
@@ -63,7 +63,7 @@ describe("integration: Claude emits action markers", () => {
         allowedTools: [],
         allowActions: true,
         actionsRequireConfirmation: false,
-        loadMemory: true,
+        loadMemory: true, listenAll: false,
       },
     });
 
@@ -93,7 +93,7 @@ describe("integration: Claude emits action markers", () => {
         allowedTools: [],
         allowActions: true,
         actionsRequireConfirmation: false,
-        loadMemory: true,
+        loadMemory: true, listenAll: false,
       },
     });
 

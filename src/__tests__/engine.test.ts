@@ -54,7 +54,7 @@ describe("assembleContext", () => {
         allowedTools: [],
         allowActions: true,
         actionsRequireConfirmation: false,
-        loadMemory: true,
+        loadMemory: true, listenAll: false,
       },
     });
     expect(result).toContain("close friend");
@@ -71,7 +71,7 @@ describe("assembleContext", () => {
         allowedTools: [],
         allowActions: true,
         actionsRequireConfirmation: false,
-        loadMemory: false,
+        loadMemory: false, listenAll: false,
       },
     });
     expect(result).not.toContain("Likes coffee");
@@ -89,7 +89,7 @@ describe("assembleContext", () => {
         allowedTools: [],
         allowActions: true,
         actionsRequireConfirmation: false,
-        loadMemory: true,
+        loadMemory: true, listenAll: false,
       },
     });
     expect(result).toContain("Likes coffee");

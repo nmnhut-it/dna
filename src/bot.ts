@@ -119,12 +119,13 @@ export function createBot(deps: BotDeps): Bot {
       `<b>Actions:</b> ${chatCfg.allowActions ? "on" : "off"}`,
       `<b>Confirm actions:</b> ${chatCfg.actionsRequireConfirmation ? "on" : "off"}`,
       `<b>Load memory:</b> ${chatCfg.loadMemory ? "on" : "off"}`,
+      `<b>Listen all:</b> ${chatCfg.listenAll ? "on" : "off"}`,
       `<b>History limit:</b> ${config.historyLimit}`,
       ``,
       `Commands:`,
       `/personality &lt;default|casual-vi&gt;`,
       `/tools &lt;tool1, tool2, ...&gt;`,
-      `/toggle actions|confirm|memory`,
+      `/toggle actions|confirm|memory|listen`,
       `/prompt — view current system prompt`,
       `/adduser &lt;userId&gt;`,
       `/removeuser &lt;userId&gt;`,
@@ -167,9 +168,10 @@ export function createBot(deps: BotDeps): Bot {
       actions: "allowActions",
       confirm: "actionsRequireConfirmation",
       memory: "loadMemory",
+      listen: "listenAll",
     };
     const key = toggleMap[field ?? ""];
-    if (!key) { await ctx.reply("Usage: /toggle actions|confirm|memory"); return; }
+    if (!key) { await ctx.reply("Usage: /toggle actions|confirm|memory|listen"); return; }
     (chatCfg as unknown as Record<string, unknown>)[key] = !chatCfg[key];
     saveChatConfig(chatId, chatCfg);
     await ctx.reply(`${field}: ${chatCfg[key] ? "on" : "off"}`);
@@ -251,19 +253,23 @@ export function createBot(deps: BotDeps): Bot {
     const chatId = ctx.chat!.id;
     const isGroup = isGroupChat(chatId);
 
+    ensureChatDirs(chatId);
+    const chatConfig = loadChatConfig(chatId, config.ownerId);
+
+    let isDirected = true;
     if (isGroup) {
       const text = (msg.text ?? msg.caption ?? "").toLowerCase();
       const isMentioned = botUsername ? text.includes(`@${botUsername}`) : false;
       const isReply = msg.reply_to_message?.from?.id === botId;
-      if (!isMentioned && !isReply) return;
+      isDirected = isMentioned || isReply;
+
+      if (!isDirected && !chatConfig.listenAll) return;
     }
 
-    ensureChatDirs(chatId);
     const senderId = msg.from?.id;
     if (senderId) ensureUserDirs(senderId);
     const paths = chatPaths(chatId);
     const uPaths = senderId ? userPaths(senderId) : undefined;
-    const chatConfig = loadChatConfig(chatId, config.ownerId);
     const today = getTodayFileName();
     const timestamp = new Date().toISOString();
     const parts: string[] = [];
@@ -319,6 +325,9 @@ export function createBot(deps: BotDeps): Bot {
 
     appendHistory(paths.historyDir, today, { role: "user", content: userMessage, timestamp });
     eventBus.emit("chat", { type: "message", chatId, role: "user", content: userMessage, timestamp });
+
+    // In listenAll mode, save to history but don't respond unless directed at bot
+    if (isGroup && !isDirected) return;
 
     const chat: ChatContext = {
       chatId,

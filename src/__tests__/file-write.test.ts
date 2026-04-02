@@ -32,7 +32,7 @@ describe("integration: Claude can write files in chat dir", () => {
         allowedTools: ["Read", "Write"],
         allowActions: true,
         actionsRequireConfirmation: false,
-        loadMemory: true,
+        loadMemory: true, listenAll: false,
       },
       chatDir: TEST_DATA,
     });
