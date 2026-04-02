@@ -46,16 +46,8 @@
   },
   "plugins": {
     "shell": {
-      "scope": [
-        {
-          "name": "npx",
-          "cmd": "npx",
-          "args": ["tsx", "src/index.ts"]
-        }
-      ]
+      "open": true
     },
-    "autostart": {
-      "args": []
-    }
+    "autostart": {}
   }
 }
