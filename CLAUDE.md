@@ -33,6 +33,12 @@ npm run tauri:build  # Tauri desktop release
 - `src/config.ts` — Global config + per-chat ChatConfig + per-user paths
 - `src/logger.ts` — Structured logging with timestamps, categories, chat IDs; emits to SSE
 - `src/web/` — Express server with per-chat REST APIs + chat config API + SSE live feed
+- `src/web/api-widget.ts` — Widget chat endpoint (`POST /api/widget/chat`) routing through engine.ts
+
+**Desktop Companion (Tauri):**
+- `src-tauri/` — Tauri v2 shell: tray icon, two windows (widget + dashboard), sidecar backend spawn, autostart
+- `src/web/widget/` — Retro Clippy-style floating widget: HTML/CSS/JS with pixel art character, notification ticker, mini chat
+- Widget uses chat ID `999999` with its own history/memory in `data/chats/999999/`
 
 **Two-tier memory:**
 - `data/users/<userId>/memory/` — personal facts that follow a user across all chats (category prefix: `user/`)

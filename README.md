@@ -90,6 +90,25 @@ data/
     └── memory/                    # the permanent record
 ```
 
+## Desktop App (Clippy Mode)
+
+DNA also runs as a Windows desktop companion — a retro Clippy-style character that floats on your screen, shows live notifications, and lets you chat without opening Telegram.
+
+Prerequisites: [Rust](https://rustup.rs/) and the Tauri CLI (`npm install -g @tauri-apps/cli`).
+
+```bash
+npm run tauri:dev     # development (hot-reload)
+npm run tauri:build   # release build (.msi installer)
+```
+
+What you get:
+- **System tray icon** — right-click for Show/Hide, Dashboard, Quit
+- **Floating Clippy widget** — bouncing pixel character with notification ticker
+- **Mini chat** — click Clippy to type messages, get replies in speech bubbles
+- **Auto-start** — registers with Windows startup so DNA is always there
+
+The Tauri app spawns the Node.js backend automatically — no need to run `npm run dev` separately.
+
 ## Testing
 
 ```bash
