@@ -347,7 +347,8 @@ export function createBot(deps: BotDeps): Bot {
         ctx.replyWithChatAction("typing").catch(() => {});
       }, 4000);
 
-      let sentMsg: { message_id: number } = await ctx.reply("Thinking...");
+      const replyOpts = isGroup ? { reply_parameters: { message_id: msg.message_id } } : {};
+      let sentMsg: { message_id: number } = await ctx.reply("Thinking...", replyOpts);
       let lastEditText = "Thinking...";
 
       const result = await processMessageStream(userMessage, enginePaths, async (chunk) => {
