@@ -6,6 +6,7 @@ import { memoryRouter } from "./api-memory.js";
 import { historyRouter } from "./api-history.js";
 import { remindersRouter } from "./api-reminders.js";
 import { eventsRouter } from "./api-events.js";
+import { widgetRouter } from "./api-widget.js";
 import { logger } from "../logger.js";
 
 export function createWebServer(port: number): express.Express {
@@ -23,6 +24,7 @@ export function createWebServer(port: number): express.Express {
   app.use("/api/chats", historyRouter());
   app.use("/api/chats", remindersRouter());
   app.use("/api/events", eventsRouter());
+  app.use("/api/widget", widgetRouter());
 
   app.listen(port, () => {
     logger.info(`Dashboard at http://localhost:${port}`);
