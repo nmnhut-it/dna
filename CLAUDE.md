@@ -12,8 +12,6 @@ DNA — a personal AI companion bot powered by Claude CLI and Telegram, with two
 npm run dev          # Start bot (tsx src/index.ts)
 npm run build        # Compile TypeScript (tsc)
 npm test             # Run tests (vitest run)
-npm run widget:dev   # Run Rust widget (cargo run)
-npm run widget:build # Build Rust widget release
 ```
 
 ## Architecture
@@ -34,16 +32,6 @@ npm run widget:build # Build Rust widget release
 - `src/logger.ts` — Structured logging with timestamps, categories, chat IDs; emits to SSE
 - `src/web/` — Express server with per-chat REST APIs + chat config API + SSE live feed
 - `src/web/api-widget.ts` — Widget chat endpoint (`POST /api/widget/chat`) routing through engine.ts
-
-**Desktop Companion (Rust Widget):**
-- `widget/` — Standalone Rust binary using egui/eframe: transparent frameless floating widget, system tray, mini chat
-- `widget/src/app.rs` — egui App: idle state (character + ticker), chat state (messages + input)
-- `widget/src/config.rs` — TOML config: backend, appearance, behavior, position, startup
-- `widget/src/tray.rs` — System tray icon with context menu (Show/Hide, Dashboard, Settings, Quit)
-- `widget/src/chat.rs` — HTTP client for `POST /api/widget/chat`
-- `widget/src/sse.rs` — SSE client for live notification ticker
-- Widget talks to Node.js backend at `http://localhost:3000`, uses chat ID `999999`
-- Config at `widget.toml` or `~/.config/dna/widget.toml`
 
 **Two-tier memory:**
 - `data/users/<userId>/memory/` — personal facts that follow a user across all chats (category prefix: `user/`)

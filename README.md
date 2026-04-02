@@ -90,31 +90,6 @@ data/
     └── memory/                    # the permanent record
 ```
 
-## Desktop Widget (Clippy Mode)
-
-DNA has a native desktop companion — a floating Clippy-style character widget built in Rust with egui.
-
-Prerequisites: [Rust](https://rustup.rs/) installed.
-
-```bash
-npm run dev              # start the backend first
-npm run widget:dev       # then start the widget
-```
-
-Or for a release build:
-```bash
-npm run widget:build     # builds to widget/target/release/dna-widget
-```
-
-Features:
-- **Floating character** — transparent, frameless, always-on-top, draggable
-- **System tray** — right-click for Show/Hide, Dashboard, Settings, Quit
-- **Live ticker** — shows Telegram messages and events in real-time
-- **Mini chat** — click the character to chat via Claude
-- **Fully configurable** — edit `widget.toml` for appearance, behavior, position, backend
-- **Cross-platform** — Windows, macOS, Linux
-- **Auto-start** — registers with OS startup
-
 ## Testing
 
 ```bash
