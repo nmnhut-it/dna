@@ -90,24 +90,30 @@ data/
     └── memory/                    # the permanent record
 ```
 
-## Desktop App (Clippy Mode)
+## Desktop Widget (Clippy Mode)
 
-DNA also runs as a Windows desktop companion — a retro Clippy-style character that floats on your screen, shows live notifications, and lets you chat without opening Telegram.
+DNA has a native desktop companion — a floating Clippy-style character widget built in Rust with egui.
 
-Prerequisites: [Rust](https://rustup.rs/) and the Tauri CLI (`npm install -g @tauri-apps/cli`).
+Prerequisites: [Rust](https://rustup.rs/) installed.
 
 ```bash
-npm run tauri:dev     # development (hot-reload)
-npm run tauri:build   # release build (.msi installer)
+npm run dev              # start the backend first
+npm run widget:dev       # then start the widget
 ```
 
-What you get:
-- **System tray icon** — right-click for Show/Hide, Dashboard, Quit
-- **Floating Clippy widget** — bouncing pixel character with notification ticker
-- **Mini chat** — click Clippy to type messages, get replies in speech bubbles
-- **Auto-start** — registers with Windows startup so DNA is always there
+Or for a release build:
+```bash
+npm run widget:build     # builds to widget/target/release/dna-widget
+```
 
-The Tauri app spawns the Node.js backend automatically — no need to run `npm run dev` separately.
+Features:
+- **Floating character** — transparent, frameless, always-on-top, draggable
+- **System tray** — right-click for Show/Hide, Dashboard, Settings, Quit
+- **Live ticker** — shows Telegram messages and events in real-time
+- **Mini chat** — click the character to chat via Claude
+- **Fully configurable** — edit `widget.toml` for appearance, behavior, position, backend
+- **Cross-platform** — Windows, macOS, Linux
+- **Auto-start** — registers with OS startup
 
 ## Testing
 
