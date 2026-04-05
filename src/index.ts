@@ -5,6 +5,7 @@ import { createBot } from "./bot.js";
 import { startScheduler } from "./scheduler.js";
 import { createWebServer } from "./web/server.js";
 import { logger } from "./logger.js";
+import { flushAll } from "./history.js";
 
 function copyToClipboard(text: string): boolean {
   try {
@@ -49,6 +50,7 @@ bot.start({
 
 process.on("SIGINT", () => {
   logger.info("DNA shutting down...", undefined, "system");
+  flushAll();
   bot.stop();
   process.exit(0);
 });
